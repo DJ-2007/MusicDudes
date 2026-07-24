@@ -1,0 +1,170 @@
+@import url('./components/styles/SpotifyTheme.css');
+
+:root {
+  /* Default font stack */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #ffffff;
+  background: #121212;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Theme Typography Definitions */
+  --font-display-family: 'Poppins', sans-serif;
+  --font-display-weight: 900;
+  --font-display-lh: 1.1;
+  --font-display-ls: -0.02em;
+
+  --font-header-family: 'Poppins', sans-serif;
+  --font-header-weight: 700;
+  --font-header-lh: 1.2;
+  --font-header-ls: -0.01em;
+
+  --font-body-main-family: 'Inter', sans-serif;
+  --font-body-main-weight: 600;
+  --font-body-main-lh: 1.5;
+  --font-body-main-ls: 0em;
+
+  --font-body-secondary-family: 'Inter', sans-serif;
+  --font-body-secondary-weight: 400;
+  --font-body-secondary-lh: 1.5;
+  --font-body-secondary-ls: 0em;
+
+  --font-track-timer-family: 'Inter', sans-serif;
+  --font-track-timer-weight: 400;
+  --font-track-timer-fvn: tabular-nums;
+  --font-track-timer-ls: 0.02em;
+
+  --font-overline-family: 'Inter', sans-serif;
+  --font-overline-weight: 700;
+  --font-overline-tt: uppercase;
+  --font-overline-ls: 0.1em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  background: #121212;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Apply display typography rules */
+.landing-card h1,
+.main-topbar h2,
+.player-info h2,
+.sidebar-name,
+.playlist-title-main,
+.queue-title-main {
+  font-family: var(--font-display-family) !important;
+  font-weight: var(--font-display-weight) !important;
+  line-height: var(--font-display-lh) !important;
+  letter-spacing: var(--font-display-ls) !important;
+}
+
+/* Apply header typography rules */
+.section-header h3,
+.sidebar-section-header,
+.status-card h3,
+.queue-panel h3,
+.playlist-header h3,
+.users-panel h3,
+.queue-section-title,
+.library-label {
+  font-family: var(--font-header-family) !important;
+  font-weight: var(--font-header-weight) !important;
+  line-height: var(--font-header-lh) !important;
+  letter-spacing: var(--font-header-ls) !important;
+}
+
+/* Apply bodyMain typography rules */
+.bottom-title,
+.queue-title,
+.sidebar-room-title,
+.user-name,
+.song-title,
+.playlist-item-title,
+.sidebar-nav-item,
+.spotify-button,
+.spotify-input,
+.bottom-song-title,
+.track-name-text,
+.sidebar-button-label,
+.playlist-name {
+  font-family: var(--font-body-main-family) !important;
+  font-weight: var(--font-body-main-weight) !important;
+  line-height: var(--font-body-main-lh) !important;
+  letter-spacing: var(--font-body-main-ls) !important;
+}
+
+/* Apply bodySecondary typography rules */
+.sidebar-subtitle,
+.landing-copy,
+.helper-text,
+.status-label,
+.bottom-artist,
+.player-artist,
+.queue-artist,
+.user-status,
+.topbar-meta,
+.bottom-player,
+.queue-hidden-hint,
+.field-label,
+.empty-queue,
+.toast-info,
+.bottom-song-artist,
+.track-artist-text,
+.playlist-info,
+.room-user-count,
+.creator-details {
+  font-family: var(--font-body-secondary-family) !important;
+  font-weight: var(--font-body-secondary-weight) !important;
+  line-height: var(--font-body-secondary-lh) !important;
+  letter-spacing: var(--font-body-secondary-ls) !important;
+}
+
+/* Apply trackTimer typography rules */
+.progress-time,
+.timer-text,
+.current-time,
+.total-time,
+.queue-duration,
+.col-duration {
+  font-family: var(--font-track-timer-family) !important;
+  font-weight: var(--font-track-timer-weight) !important;
+  font-variant-numeric: var(--font-track-timer-fvn) !important;
+  letter-spacing: var(--font-track-timer-ls) !important;
+}
+
+/* Apply overline typography rules */
+.eyebrow,
+.connection-pill,
+.section-pill,
+.toast,
+.empty-state-badge,
+.playlist-badge {
+  font-family: var(--font-overline-family) !important;
+  font-weight: var(--font-overline-weight) !important;
+  text-transform: var(--font-overline-tt) !important;
+  letter-spacing: var(--font-overline-ls) !important;
+}

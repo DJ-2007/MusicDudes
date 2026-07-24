@@ -1,0 +1,25 @@
+{
+  "name": "music-with-dudes-backend",
+  "version": "1.0.0",
+  "description": "Socket.IO backend for Music With Dudes",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^9.7.4",
+    "socket.io": "^4.8.1",
+    "youtube-dl-exec": "^3.0.15",
+    "youtube-sr": "^4.3.12",
+    "ytmusic-api": "^5.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
