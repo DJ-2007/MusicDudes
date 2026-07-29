@@ -3,7 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
-import play from 'play-dl';
+import ytdl from '@distube/ytdl-core';
 import https from 'https';
 import bcrypt from 'bcrypt';
 import { supabase } from './db.js';
@@ -400,9 +400,10 @@ async function resolveAndCacheAudioUrl(videoId) {
     let cacheEntry = audioUrlCache.get(videoId);
     if (!cacheEntry) {
       const url = `https://www.youtube.com/watch?v=${videoId}`;
-      const streamInfo = await play.stream(url, { discordPlayerCompatibility: true });
+      const info = await ytdl.getInfo(url);
+      const format = ytdl.chooseFormat(info.formats, { filter: 'audioonly' });
       
-      const directUrl = streamInfo.url;
+      const directUrl = format?.url;
       if (!directUrl) {
         return null;
       }
