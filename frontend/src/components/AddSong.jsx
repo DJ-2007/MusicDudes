@@ -365,16 +365,6 @@ export default function AddSong({
             {searchResults.length > 0 && (
               <div className="search-results-list hide-scrollbar">
                 {searchResults.map((track) => renderTrackRow(track, false))}
-                <div style={{
-                  padding: '6px 12px', fontSize: '0.72rem', color: '#888',
-                  textAlign: 'right', borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-                  background: 'rgba(0, 0, 0, 0.15)', borderRadius: '0 0 8px 8px',
-                  letterSpacing: '0.02em'
-                }}>
-                  {searchProvider === 'ytmusic'
-                    ? '🎵 Powered by YouTube Music'
-                    : '🔍 Using YouTube Search'}
-                </div>
               </div>
             )}
 

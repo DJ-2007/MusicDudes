@@ -335,9 +335,6 @@ export default function TopBar({
                   <span>Search results</span>
                 </div>
                 {searchResults.map(track => renderTrackRow(track, false))}
-                <div className="tb-dropdown-footer">
-                  {searchProvider === 'ytmusic' ? '🎵 YouTube Music' : '🔍 YouTube Search'}
-                </div>
               </>
             )}
           </div>
