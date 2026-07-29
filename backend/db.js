@@ -47,6 +47,8 @@ const roomSchema = new mongoose.Schema({
   users: [userSchema],
   history: [songSchema],
   isPlaying: { type: Boolean, default: false },
+  isShuffle: { type: Boolean, default: false },
+  isRepeat: { type: Boolean, default: false },
   currentTime: { type: Number, default: 0 },
   hostId: { type: String },
   lastUpdatedAt: { type: Date, default: Date.now },

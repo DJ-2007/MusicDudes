@@ -22,6 +22,10 @@ export default function BottomPlayer({
   onTogglePlay,
   onNext,
   onPrevious,
+  onToggleShuffle,
+  onToggleRepeat,
+  isShuffle,
+  isRepeat,
   onSeek,
   volume,
   onVolumeChange,
@@ -96,11 +100,16 @@ export default function BottomPlayer({
       {/* Center Column: Player Controls & Progress Bar */}
       <div className="bottom-center-section">
         <div className="bottom-player-buttons">
-          <button className="bottom-control-btn secondary" title="Shuffle" disabled>
+          <button
+            className={`bottom-control-btn secondary ${isShuffle ? 'active-green' : ''}`}
+            onClick={onToggleShuffle}
+            title="Shuffle"
+            style={isShuffle ? { color: '#1db954' } : {}}
+          >
             <FaRandom />
           </button>
           <button
-            className="bottom-control-btn"
+            className="bottom-control-btn btn-prev"
             onClick={onPrevious}
             title="Previous (Backspace)"
           >
@@ -115,13 +124,18 @@ export default function BottomPlayer({
             {isPlaying ? <FaPause size={14} /> : <FaPlay size={14} style={{ marginLeft: '2px' }} />}
           </button>
           <button
-            className="bottom-control-btn"
+            className="bottom-control-btn btn-next"
             onClick={onNext}
             title="Next (Arrow Right)"
           >
             <FaStepForward />
           </button>
-          <button className="bottom-control-btn secondary" title="Repeat" disabled>
+          <button 
+            className={`bottom-control-btn secondary ${isRepeat ? 'active-green' : ''}`}
+            onClick={onToggleRepeat}
+            title="Repeat"
+            style={isRepeat ? { color: '#1db954' } : {}}
+          >
             <FaRedo />
           </button>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaHome, FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes } from 'react-icons/fa';
+import { FaHome, FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes, FaListUl } from 'react-icons/fa';
 
 function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
   const [name, setName] = useState('');
@@ -86,6 +86,8 @@ export default function Sidebar({
   onCreatePlaylist,
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterText, setFilterText] = useState('');
 
   const handleConfirm = (name) => {
     setModalOpen(false);
@@ -106,35 +108,13 @@ export default function Sidebar({
             <span className="sidebar-button-label">Home</span>
           </button>
 
-          <button
-            className="sidebar-nav-button"
-            type="button"
-            onClick={() => {
-              const searchInput = document.querySelector('.topbar-search-input') || document.querySelector('.spotify-input');
-              if (searchInput) {
-                searchInput.focus();
-                searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }}
-          >
-            <FaSearch size={20} />
-            <span className="sidebar-button-label">Search</span>
-          </button>
         </div>
 
         {/* Library Panel */}
         <div className="sidebar-section-card library-section">
           <div className="library-header">
             <div className="library-title-group" onClick={onLibraryClick}>
-              <svg
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                style={{ marginRight: '12px', opacity: 0.7 }}
-              >
-                <path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM20.924 2.13a1.002 1.002 0 0 0-.853-.107L7.924 5.97A1.001 1.001 0 0 0 7 6.94v12.81a3.89 3.89 0 0 0-2 3.49A3.89 3.89 0 0 0 8.89 27a3.89 3.89 0 0 0 3.89-3.89v-9.613L21 11.23v5.52a3.89 3.89 0 0 0-2 3.49A3.89 3.89 0 0 0 22.89 24a3.89 3.89 0 0 0 3.89-3.89v-17a1 1 0 0 0-.856-.98zM10.89 23.11c0 1.04-.85 1.89-1.89 1.89s-1.89-.85-1.89-1.89.85-1.89 1.89-1.89 1.89.85 1.89 1.89zm12 3c0 1.04-.85 1.89-1.89 1.89s-1.89-.85-1.89-1.89.85-1.89 1.89-1.89 1.89.85 1.89 1.89z" transform="scale(0.8) translate(3, 3)"></path>
-              </svg>
+
               <span className="library-label">Your Library</span>
             </div>
             <button
@@ -144,6 +124,42 @@ export default function Sidebar({
             >
               <FaPlus size={14} />
             </button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <button 
+                onClick={() => setSearchOpen(!searchOpen)} 
+                style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                title="Search in playlists"
+              >
+                <FaSearch size={14} />
+              </button>
+              {searchOpen && (
+                <input
+                  type="text"
+                  placeholder="Search in playlists"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    color: 'white',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '0.8rem',
+                    width: '120px',
+                    outline: 'none'
+                  }}
+                  autoFocus
+                />
+              )}
+            </div>
+            {!searchOpen && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                Recents <FaListUl size={12} />
+              </span>
+            )}
           </div>
 
           <div className="library-playlists-list hide-scrollbar">
@@ -210,6 +226,7 @@ export default function Sidebar({
             {playlists
               .map(p => typeof p === 'string' ? p : p.name)
               .filter(name => name !== 'Liked Songs')
+              .filter(name => name.toLowerCase().includes(filterText.toLowerCase()))
               .map(name => (
                 <div
                   key={name}

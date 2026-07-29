@@ -152,6 +152,8 @@ function serializeRoom(room) {
     currentTime: room.currentTime || 0,
     lastUpdatedAt: room.lastUpdatedAt,
     hostId: hostId,
+    isShuffle: room.isShuffle || false,
+    isRepeat: room.isRepeat || false,
   };
 }
 
@@ -274,6 +276,13 @@ async function createSongFromInputAsync(input, userName) {
 }
 
 function advanceTrack(room) {
+  if (room.isRepeat && room.currentSong) {
+    room.currentTime = 0;
+    room.isPlaying = true;
+    room.lastUpdatedAt = Date.now();
+    return;
+  }
+  
   if (room.currentSong) {
     if (!room.history) room.history = [];
     room.history.push(room.currentSong);
@@ -292,7 +301,12 @@ function rewindTrack(room) {
     if (room.currentSong) {
       room.queue.unshift(room.currentSong);
     }
-    room.currentSong = room.history.pop();
+    // Keep popping history until we find a user-requested song or run out
+    let prev = room.history.pop();
+    while (prev && prev.requestedBy === '🤖 Autoplay' && room.history.length > 0) {
+      prev = room.history.pop();
+    }
+    room.currentSong = prev || null;
     room.currentTime = 0;
     room.isPlaying = true;
     room.lastUpdatedAt = Date.now();
@@ -358,14 +372,8 @@ function streamAudioFromYoutube(targetUrl, userAgent, reqHeaders, res, redirectC
   });
 }
 
-app.get('/audio/:videoId', async (req, res) => {
+async function resolveAndCacheAudioUrl(videoId) {
   try {
-    const { videoId } = req.params;
-    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-      return res.status(400).json({ error: 'Invalid video ID' });
-    }
-
-    // Check cache first
     let cacheEntry = audioUrlCache.get(videoId);
     if (!cacheEntry) {
       const url = `https://www.youtube.com/watch?v=${videoId}`;
@@ -377,15 +385,40 @@ app.get('/audio/:videoId', async (req, res) => {
 
       const directUrl = info.url;
       if (!directUrl) {
-        return res.status(502).json({ error: 'Could not extract audio URL' });
+        return null;
       }
 
       const userAgent = info.http_headers?.['User-Agent'] || info.http_headers?.['user-agent'];
 
       cacheEntry = { directUrl, userAgent };
-      // Cache for 5 hours
+      // Cache for 1 hour
       audioUrlCache.set(videoId, cacheEntry);
-      setTimeout(() => audioUrlCache.delete(videoId), 5 * 60 * 60 * 1000);
+      setTimeout(() => audioUrlCache.delete(videoId), 1 * 60 * 60 * 1000);
+    }
+    return cacheEntry;
+  } catch (error) {
+    console.error(`Error resolving audio URL for ${videoId}:`, error.message);
+    return null;
+  }
+}
+
+// Fire-and-forget prefetcher
+function prefetchAudioUrl(videoId) {
+  if (videoId && !audioUrlCache.has(videoId)) {
+    resolveAndCacheAudioUrl(videoId).catch(() => {});
+  }
+}
+
+app.get('/audio/:videoId', async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      return res.status(400).json({ error: 'Invalid video ID' });
+    }
+
+    const cacheEntry = await resolveAndCacheAudioUrl(videoId);
+    if (!cacheEntry) {
+      return res.status(502).json({ error: 'Could not extract audio URL' });
     }
 
     // Proxy the audio through our server (fixes CORS) with Range support (fixes seeking)
@@ -445,7 +478,7 @@ app.get('/api/search', async (req, res) => {
           title: song.name,
           artist: song.artist?.name || 'Unknown Artist',
           duration: song.duration || 240,
-          thumbnail: song.thumbnails?.[song.thumbnails.length - 1]?.url || '',
+          thumbnail: song.videoId ? `https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg` : '',
         }));
         provider = 'ytmusic';
       } catch (err) {
@@ -682,8 +715,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Add a song — it goes into the queue/currentSong, and optional chosen playlist
-  socket.on('add-song', async ({ roomId, song, username, input, playlistName }) => {
+  // Add a song to the queue or play immediately
+  socket.on('add-song', async ({ roomId, input, song, username, playlistName, playNow }) => {
     try {
       let room = await getRoomFromDB(roomId);
       if (!room) return;
@@ -706,15 +739,16 @@ io.on('connection', (socket) => {
         nextSong = await createSongFromInputAsync(input || song?.url || song?.videoId, username);
       }
 
-      // Play the newly added song immediately
-      if (room.currentSong) {
-        // Put the currently playing song back at the front of the queue so it's not lost
-        room.queue.unshift(room.currentSong);
+      if (playNow) {
+        room.currentSong = nextSong;
+        room.currentTime = 0;
+        room.isPlaying = true;
+      } else {
+        room.queue.push(nextSong);
+        if (!room.currentSong) {
+            advanceTrack(room);
+        }
       }
-      room.currentSong = nextSong;
-      room.currentTime = 0;
-      room.lastUpdatedAt = Date.now();
-      room.isPlaying = true;
 
       // Add to the chosen playlist ONLY if it's not queue-only
       if (playlistName && playlistName !== '__queue_only__') {
@@ -741,6 +775,9 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error adding song:', error);
@@ -848,45 +885,22 @@ io.on('connection', (socket) => {
       let room = await getRoomFromDB(roomId);
       if (!room) return;
 
-      // Remove from the active playlist
-      let activePlaylistIsEmpty = false;
-      if (room.playlists && room.playlists.length > 0) {
-        const activePlaylist = room.playlists.find(p => p.name === room.activePlaylistName) || room.playlists[0];
-        if (activePlaylist) {
-          activePlaylist.songs = activePlaylist.songs.filter((s) => s.id !== songId);
-          if (activePlaylist.songs.length === 0) {
-            activePlaylistIsEmpty = true;
-          }
-        }
-      } else {
-        const remainingGlobal = room.playlist.filter((s) => s.id !== songId);
-        if (remainingGlobal.length === 0) {
-          activePlaylistIsEmpty = true;
-        }
+      // Remove from all playlists
+      if (room.playlists) {
+        room.playlists.forEach(p => {
+            p.songs = p.songs.filter(s => s.id !== songId);
+        });
       }
-
-      room.playlist = room.playlist.filter((s) => s.id !== songId);
-      // Also remove from queue if it's there
+      
+      // Also remove from queue
       room.queue = room.queue.filter((s) => s.id !== songId);
-
-      // If the currently playing song was removed, or if the active playlist is empty and queue is empty, stop playback and advance
-      const isCurrentDeleted = room.currentSong && (room.currentSong.id === songId || String(room.currentSong._id) === String(songId));
-
-      if (isCurrentDeleted || (activePlaylistIsEmpty && room.queue.length === 0)) {
-        if (room.queue.length > 0) {
-          room.currentSong = room.queue.shift();
-          room.currentTime = 0;
-          room.isPlaying = true;
-        } else {
-          room.currentSong = null;
-          room.currentTime = 0;
-          room.isPlaying = false;
-        }
-      }
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error removing from playlist:', error);
@@ -916,6 +930,9 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error creating playlist:', error);
@@ -959,6 +976,9 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error deleting playlist:', error);
@@ -967,12 +987,21 @@ io.on('connection', (socket) => {
   });
 
   // Play a song from the permanent playlist
-  socket.on('play-from-playlist', async ({ roomId, songId }) => {
+  socket.on('play-from-playlist', async ({ roomId, songId, playNow }) => {
     try {
       let room = await getRoomFromDB(roomId);
       if (!room) return;
 
-      const song = room.playlist.find((s) => s.id === songId);
+      const activePlaylist = room.playlists.find(p => p.name === room.activePlaylistName) || room.playlists[0];
+      const songIndex = activePlaylist ? activePlaylist.songs.findIndex((s) => s.id === songId) : -1;
+      
+      let song = null;
+      if (songIndex !== -1) {
+        song = activePlaylist.songs[songIndex];
+      } else {
+        song = room.playlist.find((s) => s.id === songId);
+      }
+      
       if (!song) return;
 
       if (room.currentSong) {
@@ -983,13 +1012,63 @@ io.on('connection', (socket) => {
       room.currentSong = song;
       room.currentTime = 0;
       room.isPlaying = true;
+      
+      // Enqueue remaining playlist songs
+      if (songIndex !== -1 && activePlaylist) {
+        let remaining = activePlaylist.songs.slice(songIndex + 1);
+        if (room.isShuffle) {
+          remaining = [...remaining].sort(() => Math.random() - 0.5);
+        }
+        room.queue = remaining;
+      } else {
+        room.queue = [];
+      }
+
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error playing from playlist:', error);
       socket.emit('error', 'Failed to play song');
+    }
+  });
+
+  // Play a song from the queue (skips ahead to it)
+  socket.on('play-from-queue', async ({ roomId, songId }) => {
+    try {
+      let room = await getRoomFromDB(roomId);
+      if (!room) return;
+
+      const songIndex = room.queue.findIndex(s => s.id === songId);
+      if (songIndex === -1) return;
+
+      if (room.currentSong) {
+        if (!room.history) room.history = [];
+        room.history.push(room.currentSong);
+        if (room.history.length > 30) room.history.shift();
+      }
+
+      room.currentSong = room.queue[songIndex];
+      room.currentTime = 0;
+      room.isPlaying = true;
+      room.lastUpdatedAt = new Date();
+
+      // Remove the selected song and all skipped songs from the queue
+      room.queue = room.queue.slice(songIndex + 1);
+
+      await saveRoomToDB(room);
+      
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
+      io.to(roomId).emit('room-state', serializeRoom(room));
+    } catch (error) {
+      console.error('Error playing from queue:', error);
+      socket.emit('error', 'Failed to play from queue');
     }
   });
 
@@ -1004,6 +1083,9 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error toggling play:', error);
@@ -1019,9 +1101,38 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error syncing time:', error);
+    }
+  });
+
+  socket.on('toggle-shuffle', async ({ roomId }) => {
+    try {
+      let room = await getRoomFromDB(roomId);
+      if (!room) return;
+      room.isShuffle = !room.isShuffle;
+      room.lastUpdatedAt = new Date();
+      await saveRoomToDB(room);
+      io.to(roomId).emit('room-state', serializeRoom(room));
+    } catch (error) {
+      console.error('Error toggling shuffle:', error);
+    }
+  });
+
+  socket.on('toggle-repeat', async ({ roomId }) => {
+    try {
+      let room = await getRoomFromDB(roomId);
+      if (!room) return;
+      room.isRepeat = !room.isRepeat;
+      room.lastUpdatedAt = new Date();
+      await saveRoomToDB(room);
+      io.to(roomId).emit('room-state', serializeRoom(room));
+    } catch (error) {
+      console.error('Error toggling repeat:', error);
     }
   });
 
@@ -1144,8 +1255,7 @@ io.on('connection', (socket) => {
               title: chosen.name || 'Unknown Title',
               artist: chosen.artist?.name || 'Unknown Artist',
               duration: Number(chosen.duration) || 240,
-              thumbnail: chosen.thumbnails?.[chosen.thumbnails.length - 1]?.url
-                || `https://img.youtube.com/vi/${chosen.videoId}/hqdefault.jpg`,
+              thumbnail: `https://img.youtube.com/vi/${chosen.videoId}/hqdefault.jpg`,
               requestedBy: '🤖 Autoplay',
               playbackUrl: `/audio/${chosen.videoId}`,
             };
@@ -1191,6 +1301,9 @@ io.on('connection', (socket) => {
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       
+      if (room.queue && room.queue.length > 0) {
+        prefetchAudioUrl(room.queue[0].videoId);
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error rewinding song:', error);

@@ -2495,9 +2495,20 @@ textarea.spotify-input {
     gap: 12px;
   }
   
-  /* Hide unnecessary controls in mini player */
+  /* Hide unnecessary controls in mini player, but keep Prev/Next */
   .bottom-control-btn {
     display: none !important;
+  }
+  
+  .bottom-control-btn.btn-prev,
+  .bottom-control-btn.btn-next {
+    display: flex !important;
+    background: transparent !important;
+    color: #fff !important;
+  }
+  .bottom-control-btn.btn-prev svg,
+  .bottom-control-btn.btn-next svg {
+    fill: #fff !important;
   }
 
   /* Make sure the play/pause button overrides the display:none */

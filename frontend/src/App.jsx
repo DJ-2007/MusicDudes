@@ -127,20 +127,15 @@ export default function App() {
       setJoined(true);
       setLoading(false);
     };
-    const handleAutoplay = ({ title, artist, thumbnail }) => {
-      setAutoplayToast({ title, artist, thumbnail });
-      setTimeout(() => setAutoplayToast(null), 5000);
-    };
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('room-state', handleRoomState);
-    socket.on('autoplay', handleAutoplay);
     socket.connect();
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('room-state', handleRoomState);
-      socket.off('autoplay', handleAutoplay);
     };
   }, []);
 
@@ -193,6 +188,34 @@ export default function App() {
     if (!audio) return undefined;
     const onAudioError = () => {
       const mediaError = audio.error;
+      console.error('Audio playback error:', mediaError);
+      
+      // Network error or format error (often happens when YouTube URL expires mid-stream)
+      if (mediaError?.code === 2 || mediaError?.code === 4) {
+        const retryCount = parseInt(audio.dataset.retryCount || '0', 10);
+        if (retryCount < 3) {
+          audio.dataset.retryCount = (retryCount + 1).toString();
+          setToast('Reconnecting audio stream...');
+          const currentState = stateRef.current;
+          if (currentState.currentSong) {
+            const source = resolvePlaybackSource(currentState.currentSong);
+            const retryUrl = source + (source.includes('?') ? '&' : '?') + 'retry=' + Date.now();
+            audio.src = retryUrl;
+            audio.load();
+            // Restore time
+            const seekOnLoad = () => {
+              try { audio.currentTime = currentState.currentTime; } catch {}
+              audio.removeEventListener('loadedmetadata', seekOnLoad);
+            };
+            audio.addEventListener('loadedmetadata', seekOnLoad);
+            if (currentState.isPlaying) {
+              audio.play().catch(() => setAudioBlocked(true));
+            }
+          }
+          return;
+        }
+      } 
+      
       const message = mediaError?.code === 4
         ? 'The audio source could not be loaded. Check the song URL or backend stream.'
         : 'Audio playback failed.';
@@ -235,8 +258,16 @@ export default function App() {
   useEffect(() => {
     if (!state.currentSong) return undefined;
     progressTickRef.current = window.setInterval(() => {
+      const audio = audioRef.current;
       setState((current) => {
         if (!current.isPlaying || !current.currentSong) return current;
+        
+        // Fix silent playback bug: Only advance the progress bar if the audio element is actually playing and buffering
+        // readyState 3 = HAVE_FUTURE_DATA, readyState 4 = HAVE_ENOUGH_DATA
+        if (audio && (audio.paused || audio.readyState < 3)) {
+          return current;
+        }
+
         const nextTime = Math.min(current.currentSong.duration, current.currentTime + 0.9);
         return { ...current, currentTime: nextTime };
       });
@@ -334,6 +365,8 @@ export default function App() {
 
   const handleNext = () => emitIfReady('next-song', {});
   const handlePrevious = () => emitIfReady('previous-song', {});
+  const handleToggleShuffle = () => emitIfReady('toggle-shuffle', {});
+  const handleToggleRepeat = () => emitIfReady('toggle-repeat', {});
 
   const handleSeek = (time) => {
     if (!state.currentSong) return;
@@ -347,18 +380,19 @@ export default function App() {
   const handleAddSong = (input, playlistName) => {
     if (!input) return;
     if (typeof input === 'object' && input.videoId) {
-      emitIfReady('add-song', { song: input, username, playlistName });
+      const playNow = playlistName === '__queue_only__';
+      emitIfReady('add-song', { song: input, username, playlistName, playNow });
       const msg = playlistName && playlistName !== '__queue_only__'
         ? `"${input.title}" added & saved to "${playlistName}"! 🎶`
         : `Now playing: "${input.title}" 🎶`;
-      setToast(msg);
+      if (playlistName && playlistName !== '__queue_only__') setToast(msg);
       return;
     }
     const isYouTubeLink = /youtu(?:\.be|be\.com)/i.test(input) || /^[A-Za-z0-9_-]{11}$/.test(input);
     const isDirectUrl = (() => { try { const p = new URL(input); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; } })();
     if (!isYouTubeLink && !isDirectUrl) { setToast('Enter a valid YouTube link, video ID, or direct audio URL.'); return; }
-    emitIfReady('add-song', { input, username, playlistName });
-    setToast('Song added to queue! 🎶');
+    const playNow = playlistName === '__queue_only__';
+    emitIfReady('add-song', { input, username, playlistName, playNow });
   };
 
   const handleCreatePlaylist = (playlistName) => emitIfReady('create-playlist', { playlistName });
@@ -406,8 +440,11 @@ export default function App() {
   };
 
   const handlePlayFromPlaylist = (song) => {
-    emitIfReady('play-from-playlist', { songId: song.id });
-    setToast(`Now playing: ${song.title}`);
+    emitIfReady('play-from-playlist', { songId: song.id, playNow: true });
+  };
+
+  const handlePlayFromQueue = (song) => {
+    emitIfReady('play-from-queue', { songId: song.id });
   };
 
   const handleToggleLike = (song) => {
@@ -521,6 +558,7 @@ export default function App() {
                 onTogglePlay={handleTogglePlay}
                 onRemoveSong={handleRemoveSong}
                 onPlayFromPlaylist={handlePlayFromPlaylist}
+                onPlayFromQueue={handlePlayFromQueue}
                 onToggleLike={handleToggleLike}
                 onAddToPlaylist={handleAddToPlaylist}
                 onSelectPlaylist={handleSelectPlaylist}
@@ -546,10 +584,14 @@ export default function App() {
             song={currentSong}
             playlists={state.playlists}
             isPlaying={state.isPlaying}
+            isShuffle={state.isShuffle}
+            isRepeat={state.isRepeat}
             currentTime={state.currentTime}
             onTogglePlay={handleTogglePlay}
             onNext={handleNext}
             onPrevious={handlePrevious}
+            onToggleShuffle={handleToggleShuffle}
+            onToggleRepeat={handleToggleRepeat}
             onSeek={handleSeek}
             volume={volume}
             onVolumeChange={setVolume}
@@ -568,17 +610,7 @@ export default function App() {
             onLibraryClick={scrollToPlaylist}
           />
 
-          {autoplayToast ? (
-            <div className="autoplay-toast">
-              <img src={autoplayToast.thumbnail} alt="" className="autoplay-toast-thumb" />
-              <div className="autoplay-toast-info">
-                <span className="autoplay-toast-label">🤖 Autoplaying</span>
-                <span className="autoplay-toast-title">{autoplayToast.title}</span>
-                <span className="autoplay-toast-artist">{autoplayToast.artist}</span>
-              </div>
-              <button className="autoplay-toast-close" onClick={() => setAutoplayToast(null)}>✕</button>
-            </div>
-          ) : null}
+
         </div>
       )}
     </>

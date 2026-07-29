@@ -304,10 +304,12 @@ function SongRow({
 
       {/* Added By Column */}
       <div className="col-added-by">
-        <span className="added-by-username">
-          <FaUser size={10} style={{ marginRight: '6px', opacity: 0.6 }} />
-          {song.requestedBy || 'Guest'}
-        </span>
+        {song.requestedBy !== '🤖 Autoplay' && (
+          <span className="added-by-username">
+            <FaUser size={10} style={{ marginRight: '6px', opacity: 0.6 }} />
+            {song.requestedBy || 'Guest'}
+          </span>
+        )}
       </div>
 
       {/* Duration Column */}

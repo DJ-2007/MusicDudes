@@ -120,7 +120,7 @@ export default function NowPlayingPanel({
       )}
 
       {/* Extra metadata */}
-      {song.requestedBy && (
+      {song.requestedBy && song.requestedBy !== '🤖 Autoplay' && (
         <div className="npp-meta-section">
           <span className="npp-meta-label">Requested by</span>
           <span className="npp-meta-value">{song.requestedBy}</span>
