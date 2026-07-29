@@ -462,18 +462,34 @@ app.get('/audio/:videoId', async (req, res) => {
 });
 
 app.get('/api/test-audio/:videoId', async (req, res) => {
-  try {
-    const { videoId } = req.params;
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const info = await youtubedl(url, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      format: 'bestaudio[ext=m4a]/bestaudio/best',
-    });
-    res.json({ success: true, url: info.url, headers: info.http_headers });
-  } catch (error) {
-    res.json({ success: false, error: error.message, stack: error.stack });
+  const { videoId } = req.params;
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const clients = [
+    { name: 'tv_embedded', args: { extractorArgs: 'youtube:player_client=tv_embedded' } },
+    { name: 'mediaconnect', args: { extractorArgs: 'youtube:player_client=mediaconnect' } },
+    { name: 'tv', args: { extractorArgs: 'youtube:player_client=tv' } },
+    { name: 'ios', args: { extractorArgs: 'youtube:player_client=ios' } },
+    { name: 'android_vr', args: { extractorArgs: 'youtube:player_client=android_vr' } },
+    { name: 'mweb', args: { extractorArgs: 'youtube:player_client=mweb' } },
+    { name: 'default', args: {} },
+  ];
+  const results = [];
+  for (const client of clients) {
+    const start = Date.now();
+    try {
+      const info = await youtubedl(url, {
+        dumpSingleJson: true,
+        noWarnings: true,
+        format: 'bestaudio[ext=m4a]/bestaudio/best',
+        ...client.args,
+      });
+      results.push({ name: client.name, ok: true, elapsed: Date.now() - start, url: info.url?.slice(0, 80) });
+    } catch (e) {
+      const isBot = e.message?.includes('bot') || e.message?.includes('Sign in');
+      results.push({ name: client.name, ok: false, elapsed: Date.now() - start, error: isBot ? 'BOT_CHECK' : e.message?.slice(0, 150) });
+    }
   }
+  res.json({ results });
 });
 
 app.get('/audio/proxy', (req, res) => {
