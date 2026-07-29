@@ -659,7 +659,7 @@ app.post('/room/join', async (req, res) => {
       .single();
 
     if (error || !roomEntry) {
-      return res.status(404).json({ error: 'Room not found. Check the room name or create a new room.' });
+      return res.status(404).json({ error: 'Room not found' });
     }
 
     // Verify password
