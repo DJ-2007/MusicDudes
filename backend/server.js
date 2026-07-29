@@ -6,7 +6,7 @@ import { Server } from 'socket.io';
 import youtubedl from 'youtube-dl-exec';
 import https from 'https';
 import bcrypt from 'bcrypt';
-import { Room } from './db.js';
+import { supabase } from './db.js';
 import YouTube from 'youtube-sr';
 import YTMusic from 'ytmusic-api';
 
@@ -82,27 +82,30 @@ async function getRoomFromDB(roomId) {
   // Check cache first
   if (roomCache.has(roomId)) {
     const cached = roomCache.get(roomId);
-    // Return cached if not stale (within 2 seconds)
     if (Date.now() - cached._cachedAt < 2000) {
       return cached;
     }
   }
   
-  // Always fetch fresh from DB when cache is stale or missing
-  let room = await Room.findOne({ roomId });
-  if (!room) {
-    roomCache.delete(roomId); // Clear stale cache entry
-    return null; // Don't auto-create rooms — they must be created with a password
+  // Fetch fresh from Supabase
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('state')
+    .eq('roomId', roomId)
+    .single();
+
+  if (error || !data || !data.state) {
+    roomCache.delete(roomId);
+    return null;
   }
   
-  // Cache it
+  let room = data.state;
   room._cachedAt = Date.now();
   roomCache.set(roomId, room);
   return room;
 }
 
 async function saveRoomToDB(room) {
-  // Prune any disconnected sockets before saving to DB
   if (room.users) {
     room.users = room.users.filter(user => io.sockets.sockets.has(user.id));
   }
@@ -110,7 +113,22 @@ async function saveRoomToDB(room) {
     room.hostId = room.users[0]?.id || null;
   }
   room.lastUpdatedAt = new Date();
-  await room.save();
+  
+  const dbState = { ...room };
+  delete dbState._cachedAt;
+
+  const { error } = await supabase
+    .from('rooms')
+    .upsert({ 
+      roomId: room.roomId,
+      password: room.password,
+      state: dbState 
+    }, { onConflict: 'roomId' });
+
+  if (error) {
+    console.error('Error saving room to Supabase:', error);
+  }
+
   room._cachedAt = Date.now();
   roomCache.set(room.roomId, room);
   return room;
@@ -132,7 +150,7 @@ function serializeRoom(room) {
     }];
     room.activePlaylistName = 'Liked Songs';
     // Save to DB asynchronously to persist the migration
-    room.save().catch(err => console.error('Failed to auto-migrate room playlists:', err));
+    saveRoomToDB(room).catch(err => console.error('Failed to auto-migrate room playlists:', err));
   }
 
   const activePlaylist = room.playlists.find(p => p.name === room.activePlaylistName) || room.playlists[0];
@@ -566,13 +584,19 @@ function streamRemoteAudio(targetUrl, res, redirectCount = 0) {
 app.post('/room/create', async (req, res) => {
   try {
     const { roomName, password, username = 'Guest' } = req.body || {};
+    const normalizedRoomId = roomName?.trim();
     
-    if (!roomName || !password) {
+    if (!normalizedRoomId || !password) {
       return res.status(400).json({ error: 'Room name and password are required.' });
     }
 
     // Check if room already exists
-    const existing = await Room.findOne({ roomId: roomName.trim() });
+    const { data: existing } = await supabase
+      .from('rooms')
+      .select('roomId')
+      .eq('roomId', normalizedRoomId)
+      .single();
+
     if (existing) {
       return res.status(409).json({ error: 'A room with this name already exists. Try joining it instead.' });
     }
@@ -580,20 +604,38 @@ app.post('/room/create', async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Create the room
-    const room = new Room({
-      roomId: roomName.trim(),
+    const newRoomState = {
+      roomId: normalizedRoomId,
       password: hashedPassword,
-      playlist: [],
+      currentSong: null,
       queue: [],
+      playlist: [],
+      playlists: [{ name: 'Liked Songs', songs: [] }],
+      activePlaylistName: 'Liked Songs',
       users: [],
-    });
+      history: [],
+      isPlaying: false,
+      isShuffle: false,
+      isRepeat: false,
+      currentTime: 0,
+      hostId: null,
+      lastUpdatedAt: new Date(),
+      createdAt: new Date(),
+    };
 
-    await room.save();
-    room._cachedAt = Date.now();
-    roomCache.set(room.roomId, room);
+    const { error } = await supabase
+      .from('rooms')
+      .insert({
+        roomId: normalizedRoomId,
+        password: hashedPassword,
+        state: newRoomState
+      });
 
-    res.json({ roomId: room.roomId, state: serializeRoom(room) });
+    if (error) throw error;
+
+    roomCache.set(normalizedRoomId, { ...newRoomState, _cachedAt: Date.now() });
+
+    res.json({ roomId: normalizedRoomId, state: serializeRoom(newRoomState) });
   } catch (error) {
     console.error('Error creating room:', error);
     res.status(500).json({ error: 'Failed to create room.' });
@@ -604,26 +646,32 @@ app.post('/room/create', async (req, res) => {
 app.post('/room/join', async (req, res) => {
   try {
     const { roomName, password, username = 'Guest' } = req.body || {};
+    const normalizedRoomId = roomName?.trim();
     
-    if (!roomName || !password) {
+    if (!normalizedRoomId || !password) {
       return res.status(400).json({ error: 'Room name and password are required.' });
     }
 
-    const room = await Room.findOne({ roomId: roomName.trim() });
-    if (!room) {
+    const { data: roomEntry, error } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('roomId', normalizedRoomId)
+      .single();
+
+    if (error || !roomEntry) {
       return res.status(404).json({ error: 'Room not found. Check the room name or create a new room.' });
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, room.password);
+    const isPasswordValid = await bcrypt.compare(password, roomEntry.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Incorrect password. Please try again.' });
     }
 
-    room._cachedAt = Date.now();
-    roomCache.set(room.roomId, room);
+    roomEntry.state._cachedAt = Date.now();
+    roomCache.set(normalizedRoomId, roomEntry.state);
 
-    res.json({ roomId: room.roomId, state: serializeRoom(room) });
+    res.json({ roomId: normalizedRoomId, state: serializeRoom(roomEntry.state) });
   } catch (error) {
     console.error('Error joining room:', error);
     res.status(500).json({ error: 'Failed to join room.' });
@@ -705,10 +753,8 @@ io.on('connection', (socket) => {
   socket.on('refresh-room', async ({ roomId }) => {
     try {
       roomCache.delete(roomId); // Clear cache so we get fresh DB data
-      const room = await Room.findOne({ roomId });
+      const room = await getRoomFromDB(roomId);
       if (!room) return;
-      room._cachedAt = Date.now();
-      roomCache.set(roomId, room);
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error refreshing room:', error);
@@ -1338,37 +1384,13 @@ io.on('connection', (socket) => {
 const port = Number(process.env.PORT || 4000);
 server.listen(port, '0.0.0.0', async () => {
   console.log(`🎵 MusicDudes backend running on port ${port}`);
-  console.log(`📡 Using MongoDB for persistent storage`);
+  console.log(`📡 Using Supabase for persistent storage`);
   console.log(`🔒 Rooms are password-protected`);
-  console.log(`🌐 Network: http://10.114.215.43:${port}`);
   
   try {
-    // Clear all active users from database rooms on server startup since no one is connected yet
-    const result = await Room.updateMany({}, { $set: { users: [], hostId: null } });
-    
-    // Migrate old playlist names to "Liked Songs"
-    await Room.updateMany(
-      { "playlists.name": "Default Playlist" },
-      { $set: { "playlists.$[elem].name": "Liked Songs" } },
-      { arrayFilters: [{ "elem.name": "Default Playlist" }] }
-    );
-    await Room.updateMany(
-      { activePlaylistName: "Default Playlist" },
-      { $set: { activePlaylistName: "Liked Songs" } }
-    );
-    await Room.updateMany(
-      { "playlists.name": "Like Song" },
-      { $set: { "playlists.$[elem].name": "Liked Songs" } },
-      { arrayFilters: [{ "elem.name": "Like Song" }] }
-    );
-    await Room.updateMany(
-      { activePlaylistName: "Like Song" },
-      { $set: { activePlaylistName: "Liked Songs" } }
-    );
-    
-    console.log(`🧹 Cleaned up ${result.modifiedCount} stale user sessions from database.`);
+    console.log('✅ Server startup complete.');
   } catch (err) {
-    console.error('Failed to clean up stale users on startup:', err);
+    console.error('Failed on startup:', err);
   }
 });
 

@@ -9,11 +9,11 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "mongoose": "^9.7.4",
     "socket.io": "^4.8.1",
     "youtube-dl-exec": "^3.0.15",
     "youtube-sr": "^4.3.12",
