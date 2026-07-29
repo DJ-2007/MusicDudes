@@ -643,7 +643,7 @@ app.post('/room/create', async (req, res) => {
     res.json({ roomId: normalizedRoomId, state: serializeRoom(newRoomState) });
   } catch (error) {
     console.error('Error creating room:', error);
-    res.status(500).json({ error: 'Failed to create room.' });
+    res.status(500).json({ error: 'Failed to create room: ' + (error.message || 'Unknown error') });
   }
 });
 
@@ -679,7 +679,7 @@ app.post('/room/join', async (req, res) => {
     res.json({ roomId: normalizedRoomId, state: serializeRoom(roomEntry.state) });
   } catch (error) {
     console.error('Error joining room:', error);
-    res.status(500).json({ error: 'Failed to join room.' });
+    res.status(500).json({ error: 'Failed to join room: ' + (error.message || 'Unknown error') });
   }
 });
 
