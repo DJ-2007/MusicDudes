@@ -454,6 +454,21 @@ app.get('/audio/:videoId', async (req, res) => {
   }
 });
 
+app.get('/api/test-audio/:videoId', async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const info = await youtubedl(url, {
+      dumpSingleJson: true,
+      noWarnings: true,
+      format: 'bestaudio[ext=m4a]/bestaudio/best',
+    });
+    res.json({ success: true, url: info.url, headers: info.http_headers });
+  } catch (error) {
+    res.json({ success: false, error: error.message, stack: error.stack });
+  }
+});
+
 app.get('/audio/proxy', (req, res) => {
   const targetUrl = req.query.url;
   if (!targetUrl || !isHttpUrl(targetUrl)) {
