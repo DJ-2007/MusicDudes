@@ -14,15 +14,20 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const corsOptions = {
+  origin: true, // Dynamically reflect the requested origin to allow credentials
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+};
+app.use(cors(corsOptions));
+app.use(express.json());
+
 const io = new Server(server, {
   cors: {
     origin: true,
     methods: ['GET', 'POST'],
   },
 });
-
-app.use(cors({ origin: true }));
-app.use(express.json());
 
 const SALT_ROUNDS = 10;
 
