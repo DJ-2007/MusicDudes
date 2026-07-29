@@ -3,7 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
-import ytdl from '@distube/ytdl-core';
+import youtubedl from 'youtube-dl-exec';
 import https from 'https';
 import bcrypt from 'bcrypt';
 import { supabase } from './db.js';
@@ -91,7 +91,7 @@ async function getRoomFromDB(roomId) {
       return cached;
     }
   }
-  
+
   // Fetch fresh from Supabase
   const { data, error } = await supabase
     .from('rooms')
@@ -103,7 +103,7 @@ async function getRoomFromDB(roomId) {
     roomCache.delete(roomId);
     return null;
   }
-  
+
   let room = data.state;
   room._cachedAt = Date.now();
   roomCache.set(roomId, room);
@@ -118,16 +118,16 @@ async function saveRoomToDB(room) {
     room.hostId = room.users[0]?.id || null;
   }
   room.lastUpdatedAt = new Date();
-  
+
   const dbState = { ...room };
   delete dbState._cachedAt;
 
   const { error } = await supabase
     .from('rooms')
-    .upsert({ 
+    .upsert({
       roomId: room.roomId,
       password: room.password,
-      state: dbState 
+      state: dbState
     }, { onConflict: 'roomId' });
 
   if (error) {
@@ -142,7 +142,7 @@ async function saveRoomToDB(room) {
 function serializeRoom(room) {
   // Filter active connections dynamically
   const activeUsers = (room.users || []).filter(user => io.sockets.sockets.has(user.id));
-  
+
   let hostId = room.hostId;
   if (hostId && !io.sockets.sockets.has(hostId)) {
     hostId = activeUsers[0]?.id || null;
@@ -201,7 +201,7 @@ function normalizeVideoId(input) {
     }
     const pathMatch = url.pathname.match(/\/(?:embed|v|shorts)\/([A-Za-z0-9_-]{11})/);
     if (pathMatch) return pathMatch[1];
-  } catch (error) {}
+  } catch (error) { }
   const match = String(input).match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[&#?]|$)/);
   return match ? match[1] : null;
 }
@@ -305,7 +305,7 @@ function advanceTrack(room) {
     room.lastUpdatedAt = Date.now();
     return;
   }
-  
+
   if (room.currentSong) {
     if (!room.history) room.history = [];
     room.history.push(room.currentSong);
@@ -400,15 +400,18 @@ async function resolveAndCacheAudioUrl(videoId) {
     let cacheEntry = audioUrlCache.get(videoId);
     if (!cacheEntry) {
       const url = `https://www.youtube.com/watch?v=${videoId}`;
-      const info = await ytdl.getInfo(url);
-      const format = ytdl.chooseFormat(info.formats, { filter: 'audioonly' });
+      const info = await youtubedl(url, {
+        dumpSingleJson: true,
+        noWarnings: true,
+        format: 'bestaudio[ext=m4a]/bestaudio/best',
+      });
       
-      const directUrl = format?.url;
+      const directUrl = info.url;
       if (!directUrl) {
         return null;
       }
 
-      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      const userAgent = info.http_headers?.['User-Agent'] || info.http_headers?.['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
       cacheEntry = { directUrl, userAgent };
       // Cache for 1 hour
@@ -425,7 +428,7 @@ async function resolveAndCacheAudioUrl(videoId) {
 // Fire-and-forget prefetcher
 function prefetchAudioUrl(videoId) {
   if (videoId && !audioUrlCache.has(videoId)) {
-    resolveAndCacheAudioUrl(videoId).catch(() => {});
+    resolveAndCacheAudioUrl(videoId).catch(() => { });
   }
 }
 
@@ -587,7 +590,7 @@ app.post('/room/create', async (req, res) => {
   try {
     const { roomName, password, username = 'Guest' } = req.body || {};
     const normalizedRoomId = roomName?.trim();
-    
+
     if (!normalizedRoomId || !password) {
       return res.status(400).json({ error: 'Room name and password are required.' });
     }
@@ -649,7 +652,7 @@ app.post('/room/join', async (req, res) => {
   try {
     const { roomName, password, username = 'Guest' } = req.body || {};
     const normalizedRoomId = roomName?.trim();
-    
+
     if (!normalizedRoomId || !password) {
       return res.status(400).json({ error: 'Room name and password are required.' });
     }
@@ -707,7 +710,7 @@ io.on('connection', (socket) => {
         socket.emit('error', 'Room not found');
         return;
       }
-      
+
       const existingUser = room.users.find((user) => user.id === socket.id);
       const userRecord = {
         id: socket.id,
@@ -732,7 +735,7 @@ io.on('connection', (socket) => {
       socket.data.username = username || 'Guest';
 
       socket.emit('room-state', serializeRoom(room));
-      
+
       // Broadcast updated user list to everyone
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
@@ -794,7 +797,7 @@ io.on('connection', (socket) => {
       } else {
         room.queue.push(nextSong);
         if (!room.currentSong) {
-            advanceTrack(room);
+          advanceTrack(room);
         }
       }
 
@@ -809,7 +812,7 @@ io.on('connection', (socket) => {
           targetPlaylist = { name: playlistName, songs: [] };
           room.playlists.push(targetPlaylist);
         }
-        
+
         // Prevent duplicate songs in the playlist
         if (!targetPlaylist.songs.some(s => s.videoId === nextSong.videoId)) {
           targetPlaylist.songs.push(nextSong);
@@ -822,7 +825,7 @@ io.on('connection', (socket) => {
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -851,7 +854,7 @@ io.on('connection', (socket) => {
 
       // Check if song is liked
       const index = likedPlaylist.songs.findIndex(s => s.videoId === song.videoId);
-      
+
       if (index > -1) {
         // Remove from Liked Songs
         likedPlaylist.songs.splice(index, 1);
@@ -936,16 +939,16 @@ io.on('connection', (socket) => {
       // Remove from all playlists
       if (room.playlists) {
         room.playlists.forEach(p => {
-            p.songs = p.songs.filter(s => s.id !== songId);
+          p.songs = p.songs.filter(s => s.id !== songId);
         });
       }
-      
+
       // Also remove from queue
       room.queue = room.queue.filter((s) => s.id !== songId);
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -969,7 +972,7 @@ io.on('connection', (socket) => {
 
       const trimmedName = playlistName.trim();
       const exists = room.playlists.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
-      
+
       if (!exists) {
         room.playlists.push({ name: trimmedName, songs: [] });
       }
@@ -977,7 +980,7 @@ io.on('connection', (socket) => {
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1016,14 +1019,14 @@ io.on('connection', (socket) => {
       if (!room) return;
 
       room.playlists = room.playlists.filter(p => p.name !== playlistName);
-      
+
       if (room.activePlaylistName === playlistName) {
         room.activePlaylistName = 'Liked Songs';
       }
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1042,14 +1045,14 @@ io.on('connection', (socket) => {
 
       const activePlaylist = room.playlists.find(p => p.name === room.activePlaylistName) || room.playlists[0];
       const songIndex = activePlaylist ? activePlaylist.songs.findIndex((s) => s.id === songId) : -1;
-      
+
       let song = null;
       if (songIndex !== -1) {
         song = activePlaylist.songs[songIndex];
       } else {
         song = room.playlist.find((s) => s.id === songId);
       }
-      
+
       if (!song) return;
 
       if (room.currentSong) {
@@ -1060,7 +1063,7 @@ io.on('connection', (socket) => {
       room.currentSong = song;
       room.currentTime = 0;
       room.isPlaying = true;
-      
+
       // Enqueue remaining playlist songs
       if (songIndex !== -1 && activePlaylist) {
         let remaining = activePlaylist.songs.slice(songIndex + 1);
@@ -1074,7 +1077,7 @@ io.on('connection', (socket) => {
 
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1109,7 +1112,7 @@ io.on('connection', (socket) => {
       room.queue = room.queue.slice(songIndex + 1);
 
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1130,7 +1133,7 @@ io.on('connection', (socket) => {
       room.isPlaying = typeof isPlaying === 'boolean' ? isPlaying : !room.isPlaying;
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1148,7 +1151,7 @@ io.on('connection', (socket) => {
       room.currentTime = Math.max(0, Number(currentTime) || 0);
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1255,7 +1258,7 @@ io.on('connection', (socket) => {
                   const newOnes = r.slice(0, 4).map(normalizeCandidate);
                   candidates = [...candidates, ...newOnes];
                   console.log(`  ✅ Strategy 3 query "${q}": +${newOnes.length} candidates`);
-                } catch {}
+                } catch { }
               }
             }
           }
@@ -1348,7 +1351,7 @@ io.on('connection', (socket) => {
       rewindTrack(room);
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
-      
+
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
@@ -1388,7 +1391,7 @@ server.listen(port, '0.0.0.0', async () => {
   console.log(`🎵 MusicDudes backend running on port ${port}`);
   console.log(`📡 Using Supabase for persistent storage`);
   console.log(`🔒 Rooms are password-protected`);
-  
+
   try {
     console.log('✅ Server startup complete.');
   } catch (err) {

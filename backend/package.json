@@ -9,13 +9,13 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
     "@supabase/supabase-js": "^2.111.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
+    "youtube-dl-exec": "^3.1.9",
     "youtube-sr": "^4.3.12",
     "ytmusic-api": "^5.3.1"
   },
