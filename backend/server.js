@@ -343,7 +343,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Cache resolved audio URLs (they expire after ~6 hours on YouTube's side)
-const audioUrlCache = new Map(); // { videoId: { directUrl, userAgent } }
+const audioUrlCache = new Map(); // { videoId: Promise<{ directUrl, ytHeaders }> }
 
 function streamAudioFromYoutube(targetUrl, ytHeaders, reqHeaders, res, redirectCount = 0) {
   if (redirectCount > 5) {
@@ -386,7 +386,7 @@ function streamAudioFromYoutube(targetUrl, ytHeaders, reqHeaders, res, redirectC
   }).on('error', (err) => {
     console.error('Audio proxy error:', err.message);
     if (!res.headersSent) {
-      res.status(502).json({ error: 'Failed to stream audio' });
+      res.status(502).json({ error: 'Unable to stream audio' });
     } else {
       res.end();
     }
@@ -394,9 +394,10 @@ function streamAudioFromYoutube(targetUrl, ytHeaders, reqHeaders, res, redirectC
 }
 
 async function resolveAndCacheAudioUrl(videoId) {
-  try {
-    let cacheEntry = audioUrlCache.get(videoId);
-    if (!cacheEntry) {
+  let cachePromise = audioUrlCache.get(videoId);
+  
+  if (!cachePromise) {
+    cachePromise = (async () => {
       const url = `https://www.youtube.com/watch?v=${videoId}`;
       const info = await youtubedl(url, {
         dumpSingleJson: true,
@@ -406,19 +407,25 @@ async function resolveAndCacheAudioUrl(videoId) {
       
       const directUrl = info.url;
       if (!directUrl) {
-        return null;
+        throw new Error('No direct URL found');
       }
 
       const ytHeaders = info.http_headers || {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       };
 
-      cacheEntry = { directUrl, ytHeaders };
-      // Cache for 1 hour
-      audioUrlCache.set(videoId, cacheEntry);
-      setTimeout(() => audioUrlCache.delete(videoId), 1 * 60 * 60 * 1000);
-    }
-    return cacheEntry;
+      return { directUrl, ytHeaders };
+    })();
+    
+    audioUrlCache.set(videoId, cachePromise);
+    
+    // Clear cache on error or after 1 hour
+    cachePromise.catch(() => audioUrlCache.delete(videoId));
+    setTimeout(() => audioUrlCache.delete(videoId), 1 * 60 * 60 * 1000);
+  }
+  
+  try {
+    return await cachePromise;
   } catch (error) {
     console.error(`Error resolving audio URL for ${videoId}:`, error.message);
     return null;
