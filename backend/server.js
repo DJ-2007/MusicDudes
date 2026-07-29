@@ -345,7 +345,7 @@ app.get('/health', (_req, res) => {
 // Cache resolved audio URLs (they expire after ~6 hours on YouTube's side)
 const audioUrlCache = new Map(); // { videoId: { directUrl, userAgent } }
 
-function streamAudioFromYoutube(targetUrl, userAgent, reqHeaders, res, redirectCount = 0) {
+function streamAudioFromYoutube(targetUrl, ytHeaders, reqHeaders, res, redirectCount = 0) {
   if (redirectCount > 5) {
     if (!res.headersSent) {
       res.status(502).json({ error: 'Too many redirects' });
@@ -356,9 +356,7 @@ function streamAudioFromYoutube(targetUrl, userAgent, reqHeaders, res, redirectC
   }
 
   const client = targetUrl.startsWith('https:') ? https : http;
-  const headers = {
-    'User-Agent': userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-  };
+  const headers = { ...ytHeaders };
   if (reqHeaders.range) {
     headers['Range'] = reqHeaders.range;
   }
@@ -372,7 +370,7 @@ function streamAudioFromYoutube(targetUrl, userAgent, reqHeaders, res, redirectC
     ) {
       const redirectedUrl = new URL(upstream.headers.location, targetUrl).toString();
       upstream.resume();
-      streamAudioFromYoutube(redirectedUrl, userAgent, reqHeaders, res, redirectCount + 1);
+      streamAudioFromYoutube(redirectedUrl, ytHeaders, reqHeaders, res, redirectCount + 1);
       return;
     }
 
@@ -411,9 +409,11 @@ async function resolveAndCacheAudioUrl(videoId) {
         return null;
       }
 
-      const userAgent = info.http_headers?.['User-Agent'] || info.http_headers?.['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      const ytHeaders = info.http_headers || {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      };
 
-      cacheEntry = { directUrl, userAgent };
+      cacheEntry = { directUrl, ytHeaders };
       // Cache for 1 hour
       audioUrlCache.set(videoId, cacheEntry);
       setTimeout(() => audioUrlCache.delete(videoId), 1 * 60 * 60 * 1000);
@@ -445,7 +445,7 @@ app.get('/audio/:videoId', async (req, res) => {
     }
 
     // Proxy the audio through our server (fixes CORS) with Range support (fixes seeking)
-    streamAudioFromYoutube(cacheEntry.directUrl, cacheEntry.userAgent, req.headers, res);
+    streamAudioFromYoutube(cacheEntry.directUrl, cacheEntry.ytHeaders, req.headers, res);
   } catch (error) {
     console.error('Audio route error:', error.message);
     if (!res.headersSent) {
