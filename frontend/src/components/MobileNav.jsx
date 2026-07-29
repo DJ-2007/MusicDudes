@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaHome, FaSearch, FaSpotify, FaPlus } from 'react-icons/fa';
+import { FaHome, FaSearch, FaPlus } from 'react-icons/fa';
 import { BiLibrary } from 'react-icons/bi';
 import './styles/SpotifyTheme.css';
 
@@ -28,11 +28,6 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
       >
         <BiLibrary size={26} />
         <span>Your Library</span>
-      </button>
-
-      <button className="mobile-nav-btn" onClick={() => {}}>
-        <FaSpotify size={24} />
-        <span>Premium</span>
       </button>
 
       <button className="mobile-nav-btn" onClick={() => {}}>

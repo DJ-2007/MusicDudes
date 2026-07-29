@@ -2415,7 +2415,8 @@ textarea.spotify-input {
   /* The Mobile Nav Bar */
   .spotify-mobile-nav {
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
+    gap: 40px;
     align-items: center;
     background: rgba(0, 0, 0, 0.95);
     backdrop-filter: blur(20px);
