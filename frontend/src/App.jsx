@@ -368,11 +368,13 @@ export default function App() {
 
   const scrollToPlaylist = () => {
     setShowQueue(false);
+    setActiveMobileTab('library');
     requestAnimationFrame(() => { mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); });
   };
 
   const scrollToTop = () => {
     setShowQueue(false);
+    setActiveMobileTab('home');
     emitIfReady('select-playlist', { playlistName: 'Home' });
     requestAnimationFrame(() => { mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); });
   };

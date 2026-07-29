@@ -2594,9 +2594,20 @@ textarea.spotify-input {
   }
 
   /* Library Top Bar hides default search box */
-  .mobile-active-library .spotify-topbar .search-container,
-  .mobile-active-home .spotify-topbar .search-container {
+  .mobile-active-library .spotify-topbar .topbar-center,
+  .mobile-active-home .spotify-topbar .topbar-center {
      display: none !important;
+  }
+
+  /* Search Tab hides other topbar elements to center the search bar */
+  .mobile-active-search .topbar-left,
+  .mobile-active-search .topbar-right {
+     display: none !important;
+  }
+  .mobile-active-search .topbar-center {
+     width: 100% !important;
+     max-width: 100% !important;
+     margin: 0 !important;
   }
 
   /* Mobile Library overrides */
