@@ -3,7 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
-import youtubedl from 'youtube-dl-exec';
+import play from 'play-dl';
 import https from 'https';
 import bcrypt from 'bcrypt';
 import { supabase } from './db.js';
@@ -400,18 +400,14 @@ async function resolveAndCacheAudioUrl(videoId) {
     let cacheEntry = audioUrlCache.get(videoId);
     if (!cacheEntry) {
       const url = `https://www.youtube.com/watch?v=${videoId}`;
-      const info = await youtubedl(url, {
-        dumpSingleJson: true,
-        noWarnings: true,
-        format: 'bestaudio[ext=m4a]/bestaudio/best',
-      });
-
-      const directUrl = info.url;
+      const streamInfo = await play.stream(url, { discordPlayerCompatibility: true });
+      
+      const directUrl = streamInfo.url;
       if (!directUrl) {
         return null;
       }
 
-      const userAgent = info.http_headers?.['User-Agent'] || info.http_headers?.['user-agent'];
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
       cacheEntry = { directUrl, userAgent };
       // Cache for 1 hour
