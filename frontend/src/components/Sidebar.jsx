@@ -97,7 +97,7 @@ export default function Sidebar({
   return (
     <>
       <aside className="spotify-sidebar">
-        {/* Navigation Panel */}
+        {/* Navigation Panel (Hidden on mobile) */}
         <div className="sidebar-section-card nav-section">
           <button
             className={`sidebar-nav-button ${activePlaylistName === 'Home' ? 'active' : ''}`}
@@ -107,34 +107,36 @@ export default function Sidebar({
             <FaHome size={20} />
             <span className="sidebar-button-label">Home</span>
           </button>
-
         </div>
 
         {/* Library Panel */}
         <div className="sidebar-section-card library-section">
-          <div className="library-header">
+          <div className="library-header mobile-library-header">
             <div className="library-title-group" onClick={onLibraryClick}>
-
+              <div className="mobile-profile-icon">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=DJ&backgroundColor=b6e3f4`} alt="Profile" />
+              </div>
               <span className="library-label">Your Library</span>
             </div>
-            <button
-              className="library-add-btn"
-              onClick={() => setModalOpen(true)}
-              title="Create playlist"
-            >
-              <FaPlus size={14} />
-            </button>
+            <div className="library-header-actions">
+              <button className="library-search-btn" onClick={() => setSearchOpen(!searchOpen)}>
+                <FaSearch size={20} />
+              </button>
+              <button className="library-add-btn" onClick={() => setModalOpen(true)} title="Create playlist">
+                <FaPlus size={24} />
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
+          <div className="mobile-filter-chips">
+            <span className="filter-chip active">Playlists</span>
+            <span className="filter-chip">Podcasts</span>
+            <span className="filter-chip">Albums</span>
+            <span className="filter-chip">Artists</span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px 4px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <button 
-                onClick={() => setSearchOpen(!searchOpen)} 
-                style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
-                title="Search in playlists"
-              >
-                <FaSearch size={14} />
-              </button>
               {searchOpen && (
                 <input
                   type="text"
@@ -146,19 +148,27 @@ export default function Sidebar({
                     border: 'none',
                     color: 'white',
                     borderRadius: '4px',
-                    padding: '4px 8px',
+                    padding: '6px 10px',
                     fontSize: '0.8rem',
-                    width: '120px',
-                    outline: 'none'
+                    width: '100%',
+                    outline: 'none',
+                    marginBottom: '8px'
                   }}
                   autoFocus
                 />
               )}
             </div>
             {!searchOpen && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                Recents <FaListUl size={12} />
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
+                  <span style={{ transform: 'rotate(90deg)', display: 'inline-block', fontSize: '10px' }}>⇆</span> Recents
+                </span>
+                <span style={{ cursor: 'pointer' }}>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                    <path d="M1 2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm9 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V2zM1 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-4zm9 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4z"/>
+                  </svg>
+                </span>
+              </div>
             )}
           </div>
 
@@ -210,15 +220,17 @@ export default function Sidebar({
 
             {/* Default/Liked Songs Playlist first */}
             <div
-              className={`library-playlist-item ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
+              className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
               onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
             >
-              <div className="playlist-icon-wrap liked-songs">
-                <FaHeart size={14} fill="#fff" />
+              <div className="mobile-playlist-cover liked-songs-cover">
+                <FaHeart size={24} fill="#fff" />
               </div>
-              <div className="playlist-meta">
-                <span className="playlist-name">Liked Songs</span>
-                <span className="playlist-info">Playlist • Auto-saves</span>
+              <div className="mobile-playlist-meta">
+                <span className="mobile-playlist-name">Liked Songs</span>
+                <span className="mobile-playlist-info">
+                  <span className="pin-icon">📌</span> Playlist • You
+                </span>
               </div>
             </div>
 
@@ -230,15 +242,17 @@ export default function Sidebar({
               .map(name => (
                 <div
                   key={name}
-                  className={`library-playlist-item ${activePlaylistName === name ? 'active' : ''}`}
+                  className={`library-playlist-item mobile-playlist-row ${activePlaylistName === name ? 'active' : ''}`}
                   onClick={() => onSelectPlaylist && onSelectPlaylist(name)}
                 >
-                  <div className="playlist-icon-wrap regular-playlist">
-                    <FaMusic size={14} fill="#b3b3b3" />
+                  <div className="mobile-playlist-cover regular-playlist-cover">
+                    <FaMusic size={24} fill="#b3b3b3" />
                   </div>
-                  <div className="playlist-meta">
-                    <span className="playlist-name">{name}</span>
-                    <span className="playlist-info">Playlist • Room Music</span>
+                  <div className="mobile-playlist-meta">
+                    <span className="mobile-playlist-name">{name}</span>
+                    <span className="mobile-playlist-info">
+                      <span className="pin-icon">📌</span> Playlist • You
+                    </span>
                   </div>
                   <button
                     type="button"

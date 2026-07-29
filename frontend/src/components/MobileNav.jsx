@@ -1,5 +1,6 @@
 import React from 'react';
-import { FaHome, FaSearch, FaList } from 'react-icons/fa';
+import { FaHome, FaSearch, FaSpotify, FaPlus } from 'react-icons/fa';
+import { BiLibrary } from 'react-icons/bi';
 import './styles/SpotifyTheme.css';
 
 export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, activeTab = 'home' }) {
@@ -9,7 +10,7 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
         className={`mobile-nav-btn ${activeTab === 'home' ? 'active' : ''}`} 
         onClick={onHomeClick}
       >
-        <FaHome size={22} />
+        <FaHome size={24} />
         <span>Home</span>
       </button>
       
@@ -17,7 +18,7 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
         className={`mobile-nav-btn ${activeTab === 'search' ? 'active' : ''}`} 
         onClick={onSearchClick}
       >
-        <FaSearch size={22} />
+        <FaSearch size={24} />
         <span>Search</span>
       </button>
       
@@ -25,8 +26,18 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
         className={`mobile-nav-btn ${activeTab === 'library' ? 'active' : ''}`} 
         onClick={onLibraryClick}
       >
-        <FaList size={22} />
+        <BiLibrary size={26} />
         <span>Your Library</span>
+      </button>
+
+      <button className="mobile-nav-btn" onClick={() => {}}>
+        <FaSpotify size={24} />
+        <span>Premium</span>
+      </button>
+
+      <button className="mobile-nav-btn" onClick={() => {}}>
+        <FaPlus size={24} />
+        <span>Create</span>
       </button>
     </div>
   );

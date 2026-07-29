@@ -2466,7 +2466,7 @@ textarea.spotify-input {
     right: 8px;
     width: auto;
     height: 56px !important;
-    background: #1e1e1e !important;
+    background: linear-gradient(90deg, #4b1a1a, #2a0b0b) !important;
     border-radius: 6px;
     flex-direction: row !important;
     padding: 0 12px !important;
@@ -2529,39 +2529,131 @@ textarea.spotify-input {
     display: none !important;
   }
 
-  /* Main Grid */
-  .spotify-main-grid {
-    grid-template-columns: 1fr;
-    height: calc(100vh - 134px) !important; /* Top bar + Mini Player + Nav */
-    padding: 8px !important;
-    overflow-y: auto;
+  /* Make seek bar appear as a thin line at the bottom on mobile */
+  .spotify-bottom-player .bottom-seek-bar-wrapper {
+    display: block !important;
+    position: absolute;
+    bottom: 0;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    margin: 0;
+    padding: 0;
+    border-radius: 0 0 6px 6px;
+    overflow: hidden;
   }
+  .spotify-bottom-player .bottom-seek-bar-wrapper .progress-container {
+    height: 2px;
+    padding: 0;
+  }
+  .spotify-bottom-player .bottom-seek-bar-wrapper .progress-time {
+    display: none;
+  }
+  .spotify-bottom-player .bottom-seek-bar-wrapper .progress-slider {
+    height: 2px;
+  }
+  .spotify-bottom-player .bottom-seek-bar-wrapper .progress-slider::-webkit-slider-thumb {
+    display: none;
+    width: 0; height: 0;
+  }
+  .spotify-bottom-player .bottom-seek-bar-wrapper .progress-slider::-moz-range-thumb {
+    display: none;
+    width: 0; height: 0;
+  }
+
+  /* Main Grid -> Block Layout on Mobile */
+  .spotify-main-grid {
+    display: block !important;
+    height: calc(100vh - 134px) !important; /* Top bar + Mini Player + Nav */
+    padding: 0 !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Default on mobile: Hide Sidebar, hide NowPlaying */
+  .spotify-sidebar { display: none !important; }
+  .spotify-right-sidebar { display: none !important; }
+  .desktop-right-sidebar { display: none !important; }
+  .spotify-main-content { display: none !important; }
 
   /* Conditional view rendering based on mobile state */
-  .mobile-active-home .spotify-sidebar,
-  .mobile-active-search .spotify-sidebar,
-  .mobile-active-search .spotify-main-content {
-    display: none !important;
-  }
-
-  .mobile-active-library .spotify-main-content {
-    display: none !important;
+  .mobile-active-home .spotify-main-content {
+    display: flex !important;
+    width: 100% !important;
+    padding: 8px !important;
   }
 
   .mobile-active-library .spotify-sidebar {
     display: flex !important;
     width: 100% !important;
     height: 100% !important;
-    border-radius: 8px;
-    background: #121212;
+    border-radius: 0;
+    background: #000;
+    padding: 12px;
   }
 
-  .spotify-topbar {
-    border-radius: 0;
-  }
-  
+  /* Library Top Bar hides default search box */
   .mobile-active-library .spotify-topbar .search-container,
   .mobile-active-home .spotify-topbar .search-container {
-     display: none;
+     display: none !important;
   }
+
+  /* Mobile Library overrides */
+  .mobile-library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+  }
+  .mobile-profile-icon img {
+    width: 32px; height: 32px; border-radius: 50%;
+  }
+  .library-title-group {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .library-label { font-size: 1.4rem; font-weight: 700; color: #fff; }
+  .library-header-actions { display: flex; gap: 20px; align-items: center; }
+  .library-header-actions button { background: none; border: none; color: #fff; }
+
+  .mobile-filter-chips {
+    display: flex; gap: 8px; padding: 4px 0 12px 0; overflow-x: auto;
+  }
+  .filter-chip {
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .filter-chip.active {
+    background: #1ed760;
+    color: #000;
+  }
+
+  .mobile-playlist-row {
+    display: flex !important; align-items: center !important; gap: 12px !important; padding: 8px 0 !important;
+    background: transparent !important;
+  }
+  .mobile-playlist-cover {
+    width: 64px !important; height: 64px !important;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px !important;
+  }
+  .liked-songs-cover {
+    background: linear-gradient(135deg, #450af5, #c4efd9);
+  }
+  .regular-playlist-cover {
+    background: #282828;
+  }
+  .mobile-playlist-meta {
+    display: flex; flex-direction: column; gap: 4px; flex: 1;
+  }
+  .mobile-playlist-name {
+    color: #fff; font-size: 1rem; font-weight: 500;
+  }
+  .mobile-playlist-info {
+    color: #b3b3b3; font-size: 0.85rem;
+  }
+  .pin-icon { color: #1ed760; margin-right: 4px; font-size: 0.8rem; }
 }
