@@ -10,8 +10,9 @@ import MobileNav from './components/MobileNav';
 import ConfirmDialog from './components/ConfirmDialog';
 import './components/styles/App.css';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:4000`;
-const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:4000`;
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
+const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
 
 const defaultState = {
   roomId: '',
