@@ -163,13 +163,12 @@ export default function App() {
     const player = ytPlayerRef.current;
     if (!player || !ytReadyRef.current || !state.currentSong) return;
     try {
-      const videoId = state.currentSong.videoId;
-      if (videoId) {
-        player.loadVideoById(videoId);
-        player.setVolume(volume * 100);
-        audioUnlockedRef.current = true;
-        setAudioBlocked(false);
+      if (typeof player.playVideo === 'function') {
+        player.playVideo();
       }
+      player.setVolume(volume * 100);
+      audioUnlockedRef.current = true;
+      setAudioBlocked(false);
     } catch {
       audioUnlockedRef.current = false;
       setAudioBlocked(true);
@@ -385,9 +384,23 @@ export default function App() {
 
   const handleTogglePlay = () => {
     if (!state.currentSong) return;
-    const audio = audioRef.current;
-    const currentAudioTime = audio ? audio.currentTime : state.currentTime;
-    if (!state.isPlaying) { requestAudioPlayback(); } else if (audio) { audio.pause(); }
+    
+    let currentAudioTime = state.currentTime;
+    if (ytPlayerRef.current && ytReadyRef.current) {
+      try {
+        const ytTime = ytPlayerRef.current.getCurrentTime?.();
+        if (typeof ytTime === 'number') {
+          currentAudioTime = ytTime;
+        }
+      } catch {}
+    }
+
+    if (!state.isPlaying) {
+      requestAudioPlayback();
+    } else {
+      try { ytPlayerRef.current?.pauseVideo?.(); } catch {}
+    }
+    
     emitIfReady('toggle-play', { isPlaying: !state.isPlaying, currentTime: currentAudioTime });
   };
 
