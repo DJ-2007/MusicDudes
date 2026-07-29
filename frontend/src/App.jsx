@@ -48,6 +48,8 @@ export default function App() {
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [autoplayToast, setAutoplayToast] = useState(null);
   const audioRef = useRef(null);
+  const ytPlayerRef = useRef(null);
+  const ytReadyRef = useRef(false);
   const socketRef = useRef(null);
   const roomRef = useRef('');
   const progressTickRef = useRef(null);
@@ -87,27 +89,87 @@ export default function App() {
 
   const resolvePlaybackSource = (song) => {
     if (!song) return '';
-    const source = song.playbackUrl || `/audio/${song.videoId}`;
-    try {
-      return new URL(source, API_URL).toString();
-    } catch (error) {
-      return `${API_URL}/audio/${song.videoId}`;
-    }
+    return song.videoId || '';
   };
 
+  // Initialize YouTube IFrame Player
+  useEffect(() => {
+    const initPlayer = () => {
+      if (!window.YT || !window.YT.Player) {
+        setTimeout(initPlayer, 200);
+        return;
+      }
+      const container = document.getElementById('yt-player-hidden');
+      if (!container) { setTimeout(initPlayer, 200); return; }
+      ytPlayerRef.current = new window.YT.Player('yt-player-hidden', {
+        height: '1',
+        width: '1',
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          rel: 0,
+          iv_load_policy: 3,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => {
+            ytReadyRef.current = true;
+            if (ytPlayerRef.current) {
+              ytPlayerRef.current.setVolume(volume * 100);
+            }
+          },
+          onStateChange: (event) => {
+            // YT.PlayerState.ENDED = 0
+            if (event.data === 0) {
+              if (roomRef.current && socketRef.current) {
+                socketRef.current.emit('next-song', { roomId: roomRef.current });
+              }
+            }
+            // YT.PlayerState.PLAYING = 1
+            if (event.data === 1) {
+              audioUnlockedRef.current = true;
+              setAudioBlocked(false);
+            }
+          },
+          onError: (event) => {
+            console.error('YouTube player error:', event.data);
+            // Error codes: 2=invalid param, 5=HTML5 error, 100=not found, 101/150=not embeddable
+            if (event.data === 100 || event.data === 101 || event.data === 150) {
+              setToast('This song cannot be played (restricted by uploader).');
+            } else {
+              setToast('Audio playback error. Trying next song...');
+              setTimeout(() => {
+                if (roomRef.current && socketRef.current) {
+                  socketRef.current.emit('next-song', { roomId: roomRef.current });
+                }
+              }, 2000);
+            }
+          },
+        },
+      });
+    };
+    initPlayer();
+    return () => {
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.destroy === 'function') {
+        ytPlayerRef.current.destroy();
+      }
+    };
+  }, []);
+
   const requestAudioPlayback = async () => {
-    const audio = audioRef.current;
-    if (!audio || !state.currentSong) return;
-    const source = resolvePlaybackSource(state.currentSong);
-    if (audio.src !== source) {
-      audio.src = source;
-      audio.load();
-    }
-    audio.volume = volume;
+    const player = ytPlayerRef.current;
+    if (!player || !ytReadyRef.current || !state.currentSong) return;
     try {
-      await audio.play();
-      audioUnlockedRef.current = true;
-      setAudioBlocked(false);
+      const videoId = state.currentSong.videoId;
+      if (videoId) {
+        player.loadVideoById(videoId);
+        player.setVolume(volume * 100);
+        audioUnlockedRef.current = true;
+        setAudioBlocked(false);
+      }
     } catch {
       audioUnlockedRef.current = false;
       setAudioBlocked(true);
@@ -147,126 +209,91 @@ export default function App() {
   }, [toast]);
 
   // Sync audio source when the song changes
+  // Sync YouTube player when song changes or play/pause state changes
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return undefined;
+    const player = ytPlayerRef.current;
+    if (!ytReadyRef.current || !player) return undefined;
+
     if (!state.currentSong) {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
+      try { player.stopVideo(); } catch {}
       currentSongIdRef.current = null;
       return undefined;
     }
+
     const songId = state.currentSong.id;
     const songChanged = currentSongIdRef.current !== songId;
+
     if (songChanged) {
       currentSongIdRef.current = songId;
-      const source = resolvePlaybackSource(state.currentSong);
-      audio.src = source;
-      audio.load();
-      if (state.currentTime > 0) {
-        const seekOnLoad = () => {
-          try { audio.currentTime = state.currentTime; } catch {}
-          audio.removeEventListener('loadedmetadata', seekOnLoad);
-        };
-        audio.addEventListener('loadedmetadata', seekOnLoad);
+      const videoId = state.currentSong.videoId;
+      if (videoId) {
+        player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
       }
     }
-    audio.volume = volume;
+
+    player.setVolume(volume * 100);
+
     if (state.isPlaying) {
-      audio.play().catch(() => {
+      try {
+        const playerState = player.getPlayerState?.();
+        // YT.PlayerState.PLAYING = 1, BUFFERING = 3
+        if (playerState !== 1 && playerState !== 3) {
+          player.playVideo();
+        }
+      } catch {
         audioUnlockedRef.current = false;
         setAudioBlocked(true);
-      });
+      }
     } else {
-      audio.pause();
+      try { player.pauseVideo(); } catch {}
     }
     return undefined;
   }, [state.currentSong?.id, state.isPlaying, volume]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return undefined;
-    const onAudioError = () => {
-      const mediaError = audio.error;
-      console.error('Audio playback error:', mediaError);
-      
-      // Network error or format error (often happens when YouTube URL expires mid-stream)
-      if (mediaError?.code === 2 || mediaError?.code === 4) {
-        const retryCount = parseInt(audio.dataset.retryCount || '0', 10);
-        if (retryCount < 3) {
-          audio.dataset.retryCount = (retryCount + 1).toString();
-          setToast('Reconnecting audio stream...');
-          const currentState = stateRef.current;
-          if (currentState.currentSong) {
-            const source = resolvePlaybackSource(currentState.currentSong);
-            const retryUrl = source + (source.includes('?') ? '&' : '?') + 'retry=' + Date.now();
-            audio.src = retryUrl;
-            audio.load();
-            // Restore time
-            const seekOnLoad = () => {
-              try { audio.currentTime = currentState.currentTime; } catch {}
-              audio.removeEventListener('loadedmetadata', seekOnLoad);
-            };
-            audio.addEventListener('loadedmetadata', seekOnLoad);
-            if (currentState.isPlaying) {
-              audio.play().catch(() => setAudioBlocked(true));
-            }
-          }
-          return;
-        }
-      } 
-      
-      const message = mediaError?.code === 4
-        ? 'The audio source could not be loaded. Check the song URL or backend stream.'
-        : 'Audio playback failed.';
-      setAudioBlocked(true);
-      setToast(message);
-    };
-    audio.addEventListener('error', onAudioError);
-    return () => audio.removeEventListener('error', onAudioError);
-  }, []);
 
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
+  // Time sync: periodically check YT player time and sync with server
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return undefined;
-    const onTimeUpdate = () => {
+    const interval = setInterval(() => {
+      const player = ytPlayerRef.current;
+      if (!player || !ytReadyRef.current) return;
       const currentState = stateRef.current;
       if (!currentState.currentSong || !roomRef.current || !socketRef.current) return;
-      const diff = Math.abs((audio.currentTime || 0) - (currentState.currentTime || 0));
-      if (currentState.isPlaying && diff > 1.5) {
-        socketRef.current.emit('sync-time', { roomId: roomRef.current, currentTime: audio.currentTime });
-      }
-    };
-    const onEnded = () => {
-      if (roomRef.current && socketRef.current) {
-        socketRef.current.emit('next-song', { roomId: roomRef.current });
-      }
-    };
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('ended', onEnded);
-    return () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('ended', onEnded);
-    };
+      
+      try {
+        const ytTime = player.getCurrentTime?.();
+        if (typeof ytTime === 'number' && currentState.isPlaying) {
+          const diff = Math.abs(ytTime - (currentState.currentTime || 0));
+          if (diff > 1.5) {
+            socketRef.current.emit('sync-time', { roomId: roomRef.current, currentTime: ytTime });
+          }
+        }
+      } catch {}
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (!state.currentSong) return undefined;
     progressTickRef.current = window.setInterval(() => {
-      const audio = audioRef.current;
+      const player = ytPlayerRef.current;
       setState((current) => {
         if (!current.isPlaying || !current.currentSong) return current;
         
-        // Fix silent playback bug: Only advance the progress bar if the audio element is actually playing and buffering
-        // readyState 3 = HAVE_FUTURE_DATA, readyState 4 = HAVE_ENOUGH_DATA
-        if (audio && (audio.paused || audio.readyState < 3)) {
-          return current;
+        // Use actual YouTube player time if available
+        if (player && ytReadyRef.current) {
+          try {
+            const playerState = player.getPlayerState?.();
+            // Only advance if YT player is actually playing (state 1) or buffering (state 3)
+            if (playerState !== 1 && playerState !== 3) return current;
+            const ytTime = player.getCurrentTime?.();
+            if (typeof ytTime === 'number') {
+              return { ...current, currentTime: ytTime };
+            }
+          } catch {}
         }
 
         const nextTime = Math.min(current.currentSong.duration, current.currentTime + 0.9);
@@ -373,6 +400,9 @@ export default function App() {
     if (!state.currentSong) return;
     setState((current) => ({ ...current, currentTime: time }));
     emitIfReady('sync-time', { currentTime: time });
+    if (ytPlayerRef.current && ytReadyRef.current) {
+      try { ytPlayerRef.current.seekTo(time, true); } catch {}
+    }
     if (audioRef.current) audioRef.current.currentTime = time;
   };
 
@@ -512,7 +542,8 @@ export default function App() {
 
   return (
     <>
-      <audio ref={audioRef} preload="auto" />
+      <audio ref={audioRef} preload="auto" style={{ display: 'none' }} />
+      <div id="yt-player-hidden" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }} />
       <ConfirmDialog {...confirmConfig} />
       {toast ? <div className="toast toast-info">{toast}</div> : null}
 
