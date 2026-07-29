@@ -2562,7 +2562,66 @@ textarea.spotify-input {
     width: 0; height: 0;
   }
 
-  /* Main Grid -> Block Layout on Mobile */
+  /* Mobile Mini Player Tweaks */
+  .spotify-bottom-player .bottom-center-section .btn-prev,
+  .spotify-bottom-player .bottom-center-section .btn-next,
+  .spotify-bottom-player .bottom-center-section .secondary {
+    display: none !important;
+  }
+  .spotify-bottom-player .bottom-song-title {
+    font-size: 1rem !important;
+  }
+
+  /* Mobile Playlist Track Table Redesign */
+  .spotify-track-table-container {
+    padding: 0 0 100px 0 !important;
+  }
+  .track-table-header,
+  .track-table-divider {
+    display: none !important;
+  }
+  
+  .track-row {
+    display: flex !important;
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+  
+  .col-index,
+  .col-added-by,
+  .col-duration {
+    display: none !important;
+  }
+  
+  .col-title {
+    flex: 1 !important;
+    padding-right: 0 !important;
+    gap: 12px !important;
+  }
+  
+  .track-thumbnail {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 4px !important;
+  }
+  
+  .track-name-text {
+    font-size: 1rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .track-artist-text {
+    font-size: 0.85rem !important;
+  }
+
+  /* Hide extra items to prevent text squishing */
+  .track-row:hover .row-play-btn {
+    display: none !important;
+  }
   .spotify-main-grid {
     display: block !important;
     height: calc(100vh - 134px) !important; /* Top bar + Mini Player + Nav */

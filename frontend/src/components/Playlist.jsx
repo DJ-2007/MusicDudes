@@ -276,6 +276,7 @@ function SongRow({
     <div 
       className={`track-row ${isPlayingSong ? 'active-song' : ''}`}
       onDoubleClick={handleRowClick}
+      onClick={() => { if (window.innerWidth <= 768) handleRowClick() }}
     >
       {/* Index Column / Play Button Hover state */}
       <div className="col-index">
