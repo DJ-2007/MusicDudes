@@ -993,9 +993,15 @@
   }
 
   .toast {
-    left: 10px;
-    right: 10px;
+    top: auto;
     bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 90vw;
+    font-size: 0.85rem;
+    padding: 10px 20px;
+    text-align: center;
   }
 }
 

@@ -254,6 +254,25 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
+  // Fix Sync: Force YT Player to seek if server timestamp jumps
+  useEffect(() => {
+    const player = ytPlayerRef.current;
+    if (!ytReadyRef.current || !player || !state.currentSong) return;
+
+    try {
+      const ytTime = player.getCurrentTime?.();
+      if (typeof ytTime === 'number') {
+        const diff = Math.abs(ytTime - (state.currentTime || 0));
+        // If the server-provided time differs from player time by more than 2 seconds, force a seek
+        if (diff > 2.0) {
+          player.seekTo(state.currentTime, true);
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing playback time:', err);
+    }
+  }, [state.currentTime]);
+
   // Time sync: periodically check YT player time and sync with server
   useEffect(() => {
     const interval = setInterval(() => {
