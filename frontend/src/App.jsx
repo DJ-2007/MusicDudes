@@ -184,6 +184,25 @@ export default function App() {
       setToast('Connection lost. Reconnecting automatically...');
     };
     const handleRoomState = (roomState) => {
+      // Smart sync: don't blindly overwrite currentTime if our YT player is close
+      const player = ytPlayerRef.current;
+      if (player && ytReadyRef.current && roomState.currentSong && roomState.isPlaying) {
+        try {
+          const ytTime = player.getCurrentTime?.();
+          if (typeof ytTime === 'number') {
+            const serverTime = roomState.currentTime || 0;
+            const diff = Math.abs(ytTime - serverTime);
+            if (diff < 3) {
+              // Server time is close to our player — keep local time, don't seek
+              roomState = { ...roomState, currentTime: ytTime };
+            } else {
+              // Large difference — this is a real sync event (another user seeked)
+              // Force our YT player to jump to the server's time
+              player.seekTo(serverTime, true);
+            }
+          }
+        } catch {}
+      }
       setState(roomState);
       roomRef.current = roomState.roomId || roomRef.current;
       setJoined(true);
@@ -254,24 +273,7 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
-  // Fix Sync: Force YT Player to seek if server timestamp jumps
-  useEffect(() => {
-    const player = ytPlayerRef.current;
-    if (!ytReadyRef.current || !player || !state.currentSong) return;
 
-    try {
-      const ytTime = player.getCurrentTime?.();
-      if (typeof ytTime === 'number') {
-        const diff = Math.abs(ytTime - (state.currentTime || 0));
-        // If the server-provided time differs from player time by more than 2 seconds, force a seek
-        if (diff > 2.0) {
-          player.seekTo(state.currentTime, true);
-        }
-      }
-    } catch (err) {
-      console.error('Error syncing playback time:', err);
-    }
-  }, [state.currentTime]);
 
   // Time sync: periodically check YT player time and sync with server
   useEffect(() => {

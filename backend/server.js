@@ -172,7 +172,7 @@ function serializeRoom(room) {
     activePlaylistName: room.activePlaylistName || 'Liked Songs',
     users: activeUsers,
     isPlaying: room.isPlaying || false,
-    currentTime: room.currentTime || 0,
+    currentTime: room.isPlaying ? getSyncedTime(room) : (room.currentTime || 0),
     lastUpdatedAt: room.lastUpdatedAt,
     hostId: hostId,
     isShuffle: room.isShuffle || false,
@@ -1193,7 +1193,7 @@ io.on('connection', (socket) => {
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
-      io.to(roomId).emit('room-state', serializeRoom(room));
+      socket.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error syncing time:', error);
     }
