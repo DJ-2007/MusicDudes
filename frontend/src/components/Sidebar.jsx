@@ -300,8 +300,7 @@ export default function Sidebar({
                     <FaTrash size={12} />
                   </button>
                 </div>
-                );
-              })}
+              ))}
           </div>
         </div>
       </aside>
