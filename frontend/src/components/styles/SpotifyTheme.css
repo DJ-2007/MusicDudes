@@ -237,29 +237,33 @@ textarea.spotify-input {
 .library-playlists-list {
   flex: 1;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
   gap: 4px;
   padding-right: 4px;
+  width: 100%;
 }
 
 .library-playlist-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px !important;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s ease;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .library-playlist-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .library-playlist-item.active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .playlist-icon-wrap {
