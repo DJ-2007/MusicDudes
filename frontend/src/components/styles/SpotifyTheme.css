@@ -325,15 +325,27 @@ textarea.spotify-input {
 
 /* Base styles for playlist cover thumbnails (applies at all breakpoints) */
 .mobile-playlist-cover {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  border-radius: 4px;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  border-radius: 4px !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   overflow: hidden;
+}
+
+/* Override .liked-songs-cover's width:100%/height:100% when used as sidebar thumbnail */
+.mobile-playlist-cover.liked-songs-cover {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  border-radius: 4px !important;
 }
 
 .regular-playlist-cover {

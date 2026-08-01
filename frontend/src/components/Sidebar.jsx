@@ -219,35 +219,27 @@ export default function Sidebar({
             )}
 
             {/* Default/Liked Songs Playlist first */}
-            {(() => {
-              const likedPlaylist = playlists.find(p => (typeof p === 'string' ? p : p.name) === 'Liked Songs');
-              const likedCount = likedPlaylist?.songs?.length || 0;
-              return (
-                <div
-                  className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
-                  onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
-                >
-                  <div className="mobile-playlist-cover liked-songs-cover">
-                    <FaHeart size={20} fill="#fff" />
-                  </div>
-                  <div className="mobile-playlist-meta">
-                    <span className="mobile-playlist-name">Liked Songs</span>
-                    <span className="mobile-playlist-info">
-                      <span className="pin-icon">📌</span> Playlist • {likedCount} song{likedCount !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
+            <div
+              className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
+              onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
+            >
+              <div className="mobile-playlist-cover liked-songs-cover">
+                <FaHeart size={20} fill="#fff" />
+              </div>
+              <div className="mobile-playlist-meta">
+                <span className="mobile-playlist-name">Liked Songs</span>
+                <span className="mobile-playlist-info">
+                  <span className="pin-icon">📌</span> Playlist • You
+                </span>
+              </div>
+            </div>
 
             {/* User Playlists */}
             {playlists
-              .filter(p => (typeof p === 'string' ? p : p.name) !== 'Liked Songs')
-              .filter(p => (typeof p === 'string' ? p : p.name).toLowerCase().includes(filterText.toLowerCase()))
-              .map(p => {
-                const name = typeof p === 'string' ? p : p.name;
-                const songCount = p?.songs?.length || 0;
-                return (
+              .map(p => typeof p === 'string' ? p : p.name)
+              .filter(name => name !== 'Liked Songs')
+              .filter(name => name.toLowerCase().includes(filterText.toLowerCase()))
+              .map(name => (
                 <div
                   key={name}
                   className={`library-playlist-item mobile-playlist-row ${activePlaylistName === name ? 'active' : ''}`}
@@ -259,7 +251,7 @@ export default function Sidebar({
                   <div className="mobile-playlist-meta">
                     <span className="mobile-playlist-name">{name}</span>
                     <span className="mobile-playlist-info">
-                      Playlist • {songCount} song{songCount !== 1 ? 's' : ''}
+                      Playlist • You
                     </span>
                   </div>
                   <button
