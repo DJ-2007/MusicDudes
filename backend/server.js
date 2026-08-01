@@ -4,8 +4,8 @@ async function prefillQueue(roomId, seedSong) {
     if (!seedSong) return;
     let room = await getRoomFromDB(roomId);
     if (!room) return;
-    // We only want to fill if the queue has fewer than 2 songs
-    if (room.queue && room.queue.length >= 2) return;
+    // We only want to fill if the queue has fewer than 10 songs
+    if (room.queue && room.queue.length >= 10) return;
 
     console.log(`🎵 Smart Auto-Queue: finding recommendations based on "${seedSong.title}"`);
     let candidates = [];
@@ -75,7 +75,7 @@ async function prefillQueue(roomId, seedSong) {
 
     const pool = filtered.length > 0 ? filtered : candidates;
     
-    const songsToAdd = 3 - (room.queue ? room.queue.length : 0);
+    const songsToAdd = 10 - (room.queue ? room.queue.length : 0);
     let addedCount = 0;
     
     for (let i = 0; i < songsToAdd; i++) {
@@ -945,6 +945,10 @@ io.on('connection', (socket) => {
         room.currentSong = nextSong;
         room.currentTime = 0;
         room.isPlaying = true;
+        // Clear old auto-queued songs so the queue changes according to the new song
+        if (room.queue) {
+          room.queue = room.queue.filter(s => s.requestedBy !== '🤖 Autoplay');
+        }
       } else {
         room.queue.push(nextSong);
         if (!room.currentSong) {
@@ -981,8 +985,8 @@ io.on('connection', (socket) => {
         prefetchAudioUrl(room.queue[0].videoId);
       }
       
-      // Smart Auto-Queue: if they play a song and queue is empty, fill it up!
-      if (playNow && room.queue.length === 0) {
+      // Smart Auto-Queue: if they play a new song explicitly, refill the queue based on it!
+      if (playNow) {
         prefillQueue(roomId, nextSong); // don't await, let it run in background
       }
       io.to(roomId).emit('room-state', serializeRoom(room));
