@@ -238,6 +238,8 @@ async function saveRoomToDB(room) {
     room.hostId = room.users[0]?.id || null;
   }
   room.lastUpdatedAt = new Date();
+  room._cachedAt = Date.now();
+  roomCache.set(room.roomId, room);
 
   const dbState = { ...room };
   delete dbState._cachedAt;

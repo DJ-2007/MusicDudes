@@ -88,10 +88,14 @@ export default function Sidebar({
   const [modalOpen, setModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterText, setFilterText] = useState('');
+  const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const handleConfirm = (name) => {
     setModalOpen(false);
-    onCreatePlaylist && onCreatePlaylist(name);
+    setNewPlaylistName('');
+    if (name && name.trim()) {
+      onCreatePlaylist && onCreatePlaylist(name.trim());
+    }
   };
 
   return (
@@ -189,30 +193,33 @@ export default function Sidebar({
 
                 <form onSubmit={(e) => {
                   e.preventDefault();
-                  const val = e.target.elements.playlistName.value;
-                  if (val.trim()) handleConfirm(val.trim());
+                  if (newPlaylistName.trim()) handleConfirm(newPlaylistName.trim());
                 }} className="cp-modal-form" style={{ marginTop: '12px', gap: '12px' }}>
                   <div className="cp-input-wrap">
                     <input
                       autoFocus
-                      name="playlistName"
                       className="cp-input"
                       style={{ padding: '10px 12px', fontSize: '0.85rem' }}
                       type="text"
+                      value={newPlaylistName}
+                      onChange={(e) => setNewPlaylistName(e.target.value)}
                       placeholder="My Awesome Playlist"
                       maxLength={50}
                       autoComplete="off"
                       spellCheck={false}
                       onKeyDown={(e) => {
-                        if (e.key === 'Escape') setModalOpen(false);
+                        if (e.key === 'Escape') {
+                          setModalOpen(false);
+                          setNewPlaylistName('');
+                        }
                       }}
                     />
                   </div>
                   <div className="cp-modal-actions" style={{ gap: '8px' }}>
-                    <button type="button" className="cp-btn-cancel" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => setModalOpen(false)}>
+                    <button type="button" className="cp-btn-cancel" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => { setModalOpen(false); setNewPlaylistName(''); }}>
                       Cancel
                     </button>
-                    <button type="submit" className="cp-btn-create" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
+                    <button type="submit" className="cp-btn-create" style={{ padding: '6px 14px', fontSize: '0.8rem' }} disabled={!newPlaylistName.trim()}>
                       <FaPlus size={10} style={{ marginRight: '4px' }} /> Create
                     </button>
                   </div>
