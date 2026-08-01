@@ -2735,9 +2735,10 @@ textarea.spotify-input {
     background: transparent !important;
   }
   .mobile-playlist-cover {
-    width: 64px !important; height: 64px !important;
+    width: 48px !important; height: 48px !important;
+    min-width: 48px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 2px !important;
+    border-radius: 4px !important;
   }
   .liked-songs-cover {
     background: linear-gradient(135deg, #450af5, #c4efd9);
