@@ -1360,14 +1360,32 @@ io.on('connection', (socket) => {
 
       advanceTrack(room);
 
-      // Save and emit immediately so the client gets the next song right away
+      // If the queue was empty and we have no next song, fill the queue NOW
+      // and advance again so playback never stops
+      if (!room.currentSong && finishedSong) {
+        // Save the current state first (currentSong=null)
+        room.lastUpdatedAt = new Date();
+        await saveRoomToDB(room);
+
+        // Await prefillQueue so songs are ready before we continue
+        await prefillQueue(roomId, finishedSong);
+
+        // Re-fetch room from DB since prefillQueue saved its own copy
+        room = await getRoomFromDB(roomId);
+        if (room && room.queue && room.queue.length > 0) {
+          advanceTrack(room);
+        }
+      }
+
+      // Save and emit so the client gets the next song
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       io.to(roomId).emit('room-state', serializeRoom(room));
 
-      // If queue is running low, pre-fill it in the background (don't await)
-      if (room.queue.length <= 1 && finishedSong) {
-        prefillQueue(roomId, finishedSong);
+      // Keep the queue stocked in the background for continuous playback
+      const seedSong = room.currentSong || finishedSong;
+      if (room.queue.length <= 3 && seedSong) {
+        prefillQueue(roomId, seedSong);
       }
     } catch (error) {
       console.error('Error skipping song:', error);
