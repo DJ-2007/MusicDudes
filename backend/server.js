@@ -102,8 +102,14 @@ async function prefillQueue(roomId, seedSong) {
     }
     
     if (addedCount > 0) {
-      await saveRoomToDB(room);
-      io.to(roomId).emit('room-state', serializeRoom(room));
+      // Re-fetch room from cache to ensure we preserve the latest live playback state (currentTime / lastUpdatedAt)
+      let latestRoom = (await getRoomFromDB(roomId)) || room;
+      latestRoom.queue = room.queue;
+      latestRoom._cachedAt = Date.now();
+      roomCache.set(roomId, latestRoom);
+
+      saveRoomToDB(latestRoom).catch(err => console.error('Background save failed in prefillQueue:', err));
+      io.to(roomId).emit('room-state', serializeRoom(latestRoom));
       console.log(`🎵 Smart Auto-Queue: added ${addedCount} songs`);
     }
   } catch (e) {

@@ -194,12 +194,12 @@ export default function App() {
           if (typeof ytTime === 'number') {
             const serverTime = roomState.currentTime || 0;
             const diff = Math.abs(ytTime - serverTime);
-            if (diff < 3) {
+            // Increase tolerance to 8s so background queue updates don't trigger accidental seeks
+            if (diff < 8) {
               // Server time is close to our player — keep local time, don't seek
               roomState = { ...roomState, currentTime: ytTime };
             } else {
-              // Large difference — this is a real sync event (another user seeked)
-              // Force our YT player to jump to the server's time
+              // Large difference — this is a real seek event (e.g. another user dragged the progress bar)
               player.seekTo(serverTime, true);
             }
           }
