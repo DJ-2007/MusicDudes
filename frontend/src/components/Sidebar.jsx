@@ -223,18 +223,31 @@ export default function Sidebar({
             {/* Default/Liked Songs Playlist first */}
             <div
               className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '6px' }}
               onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
             >
               <div 
-                className="mobile-playlist-cover liked-songs-cover"
-                style={{ width: '48px', height: '48px', minWidth: '48px', maxWidth: '48px', borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  minWidth: '48px', 
+                  maxWidth: '48px', 
+                  minHeight: '48px',
+                  maxHeight: '48px',
+                  borderRadius: '4px', 
+                  flexShrink: 0, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #450af5 0%, #8e8ee5 50%, #c4efd9 100%)'
+                }}
               >
-                <FaHeart size={20} fill="#fff" />
+                <FaHeart size={18} fill="#fff" />
               </div>
-              <div className="mobile-playlist-meta" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                <span className="mobile-playlist-name" style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Liked Songs</span>
-                <span className="mobile-playlist-info" style={{ color: '#a7a7a7', fontSize: '0.75rem', marginTop: '2px' }}>
-                  <span className="pin-icon" style={{ color: '#1ed760', marginRight: '4px' }}>📌</span> Playlist • You
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '2px' }}>
+                <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Liked Songs</span>
+                <span style={{ color: '#a7a7a7', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#1ed760', fontSize: '0.75rem' }}>📌</span> Playlist • DJ
                 </span>
               </div>
             </div>
@@ -248,18 +261,31 @@ export default function Sidebar({
                 <div
                   key={name}
                   className={`library-playlist-item mobile-playlist-row ${activePlaylistName === name ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '6px' }}
                   onClick={() => onSelectPlaylist && onSelectPlaylist(name)}
                 >
                   <div 
-                    className="mobile-playlist-cover regular-playlist-cover"
-                    style={{ width: '48px', height: '48px', minWidth: '48px', maxWidth: '48px', borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ 
+                      width: '48px', 
+                      height: '48px', 
+                      minWidth: '48px', 
+                      maxWidth: '48px', 
+                      minHeight: '48px',
+                      maxHeight: '48px',
+                      borderRadius: '4px', 
+                      flexShrink: 0, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      background: '#282828'
+                    }}
                   >
-                    <FaMusic size={20} fill="#b3b3b3" />
+                    <FaMusic size={18} fill="#b3b3b3" />
                   </div>
-                  <div className="mobile-playlist-meta" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                    <span className="mobile-playlist-name" style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
-                    <span className="mobile-playlist-info" style={{ color: '#a7a7a7', fontSize: '0.75rem', marginTop: '2px' }}>
-                      Playlist • You
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '2px' }}>
+                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                    <span style={{ color: '#a7a7a7', fontSize: '0.8rem' }}>
+                      Playlist • DJ
                     </span>
                   </div>
                   <button
