@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaHome, FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes, FaListUl } from 'react-icons/fa';
+import { FaHome, FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes, FaListUl, FaArrowRight } from 'react-icons/fa';
 
 function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
   const [name, setName] = useState('');
@@ -111,33 +111,32 @@ export default function Sidebar({
 
         {/* Library Panel */}
         <div className="sidebar-section-card library-section">
-          <div className="library-header mobile-library-header">
+          <div className="library-header">
             <div className="library-title-group" onClick={onLibraryClick}>
-              <div className="mobile-profile-icon">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=DJ&backgroundColor=b6e3f4`} alt="Profile" />
-              </div>
-              <span className="library-label">Your Library</span>
+              <span className="library-label" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"></path></svg>
+                Your Library
+              </span>
             </div>
-            <div className="library-header-actions">
-              <button className="library-search-btn" onClick={() => setSearchOpen(!searchOpen)}>
-                <FaSearch size={20} />
+            <div className="library-header-actions" style={{ display: 'flex', gap: '16px', color: '#b3b3b3' }}>
+              <button className="library-add-btn" onClick={() => setModalOpen(true)} title="Create playlist" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+                <FaPlus size={16} />
               </button>
-              <button className="library-add-btn" onClick={() => setModalOpen(true)} title="Create playlist">
-                <FaPlus size={24} />
+              <button title="Show more" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+                <FaArrowRight size={16} style={{ transform: 'rotate(-45deg)' }} />
               </button>
             </div>
           </div>
 
-          <div className="mobile-filter-chips">
-            <span className="filter-chip active">Playlists</span>
-            <span className="filter-chip">Podcasts</span>
-            <span className="filter-chip">Albums</span>
-            <span className="filter-chip">Artists</span>
+          <div className="universal-filter-chips" style={{ display: 'flex', gap: '8px', padding: '12px 16px', overflowX: 'auto' }}>
+            <span className="filter-chip active" style={{ background: '#333', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Playlists</span>
+            <span className="filter-chip" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Podcasts</span>
+            <span className="filter-chip" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Artists</span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px 4px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              {searchOpen && (
+              {searchOpen ? (
                 <input
                   type="text"
                   placeholder="Search in playlists"
@@ -152,20 +151,23 @@ export default function Sidebar({
                     fontSize: '0.8rem',
                     width: '100%',
                     outline: 'none',
-                    marginBottom: '8px'
                   }}
                   autoFocus
                 />
+              ) : (
+                <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px' }}>
+                  <FaSearch size={16} />
+                </button>
               )}
             </div>
             {!searchOpen && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
-                  <span style={{ transform: 'rotate(90deg)', display: 'inline-block', fontSize: '10px' }}>⇆</span> Recents
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
+                  Recents
                 </span>
                 <span style={{ cursor: 'pointer' }}>
                   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                    <path d="M1 2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm9 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V2zM1 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-4zm9 0a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4z"/>
+                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zm2.25.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 7a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 11.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75z" />
                   </svg>
                 </span>
               </div>
