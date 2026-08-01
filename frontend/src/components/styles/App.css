@@ -693,17 +693,17 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
-  padding: 14px 28px;
+  padding: 10px 20px;
   color: #ffffff;
-  background: rgba(18, 18, 18, 0.7);
+  background: rgba(18, 18, 18, 0.85);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 50px;
+  border-radius: 30px;
   font-family: 'Inter', 'Circular', -apple-system, sans-serif;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   letter-spacing: 0.2px;
   text-transform: none !important;
   display: flex;
@@ -999,8 +999,8 @@
     transform: translateX(-50%);
     width: max-content;
     max-width: 90vw;
-    font-size: 0.85rem;
-    padding: 10px 20px;
+    font-size: 0.75rem;
+    padding: 8px 16px;
     text-align: center;
   }
 }

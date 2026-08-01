@@ -102,7 +102,6 @@ async function prefillQueue(roomId, seedSong) {
     }
     
     if (addedCount > 0) {
-      room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       io.to(roomId).emit('room-state', serializeRoom(room));
       console.log(`🎵 Smart Auto-Queue: added ${addedCount} songs`);
@@ -1355,21 +1354,17 @@ io.on('connection', (socket) => {
       // Record the finished song in history before advancing
       if (finishedSong?.videoId) recordPlayHistory(roomId, finishedSong.videoId);
 
-      
       advanceTrack(room);
-      
-      // If queue is running empty, pre-fill it!
-      if (room.queue.length === 0 && finishedSong) {
-        await prefillQueue(roomId, finishedSong);
-        // If we were stuck because queue was empty, try advancing again!
-        if (!room.currentSong && room.queue.length > 0) {
-          advanceTrack(room);
-        }
-      }
 
+      // Save and emit immediately so the client gets the next song right away
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
       io.to(roomId).emit('room-state', serializeRoom(room));
+
+      // If queue is running low, pre-fill it in the background (don't await)
+      if (room.queue.length <= 1 && finishedSong) {
+        prefillQueue(roomId, finishedSong);
+      }
     } catch (error) {
       console.error('Error skipping song:', error);
     }
