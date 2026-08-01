@@ -96,52 +96,48 @@ export default function App() {
 
   // Initialize YouTube IFrame Player
   useEffect(() => {
-    const initPlayer = () => {
-      if (!window.YT || !window.YT.Player) {
-        setTimeout(initPlayer, 200);
-        return;
-      }
-      const container = document.getElementById('yt-player-hidden');
-      if (!container) { setTimeout(initPlayer, 200); return; }
-      ytPlayerRef.current = new window.YT.Player('yt-player-hidden', {
-        height: '1',
-        width: '1',
-        playerVars: {
-          autoplay: 0,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          modestbranding: 1,
-          rel: 0,
-          iv_load_policy: 3,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: () => {
-            ytReadyRef.current = true;
-            if (ytPlayerRef.current) {
-              ytPlayerRef.current.setVolume(volume * 100);
-            }
+    // Inject YouTube IFrame API
+    if (window.YT && window.YT.Player) {
+      ytReadyRef.current = true;
+      return;
+    }
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      ytReadyRef.current = true;
+      const initPlayer = () => {
+        ytPlayerRef.current = new window.YT.Player('yt-player-hidden', {
+          height: '1',
+          width: '1',
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            rel: 0,
+            playsinline: 1,
+            origin: window.location.origin,
           },
-          onStateChange: (event) => {
-            // YT.PlayerState.ENDED = 0
-            if (event.data === 0) {
-              if (roomRef.current && socketRef.current) {
-                socketRef.current.emit('next-song', { roomId: roomRef.current });
+          events: {
+            onReady: () => {
+              ytReadyRef.current = true;
+            },
+            onStateChange: (event) => {
+              if (event.data === window.YT.PlayerState.ENDED) {
+                if (roomRef.current && socketRef.current) {
+                  socketRef.current.emit('next-song', { roomId: roomRef.current });
+                }
               }
-            }
-            // YT.PlayerState.PLAYING = 1
-            if (event.data === 1) {
-              audioUnlockedRef.current = true;
-              setAudioBlocked(false);
-            }
-          },
-          onError: (event) => {
-            console.error('YouTube player error:', event.data);
-            // Error codes: 2=invalid param, 5=HTML5 error, 100=not found, 101/150=not embeddable
-            if (event.data === 100 || event.data === 101 || event.data === 150) {
-              setToast('This song cannot be played (restricted by uploader).');
-            } else {
+              if (event.data === window.YT.PlayerState.PLAYING) {
+                audioUnlockedRef.current = true;
+                setAudioBlocked(false);
+              }
+            },
+            onError: (event) => {
+              console.error('YouTube player error:', event.data);
               setToast('Audio playback error. Trying next song...');
               setTimeout(() => {
                 if (roomRef.current && socketRef.current) {
@@ -150,10 +146,10 @@ export default function App() {
               }, 2000);
             }
           },
-        },
-      });
+        });
+      };
+      initPlayer();
     };
-    initPlayer();
     return () => {
       if (ytPlayerRef.current && typeof ytPlayerRef.current.destroy === 'function') {
         ytPlayerRef.current.destroy();
@@ -185,6 +181,9 @@ export default function App() {
       setConnected(false);
       setToast('Connection lost. Reconnecting automatically...');
     };
+    const handleQueueUpdated = ({ queue }) => {
+      setState(prev => ({ ...prev, queue }));
+    };
     const handleRoomState = (roomState) => {
       // Smart sync: don't blindly overwrite currentTime if our YT player is close
       const player = ytPlayerRef.current;
@@ -214,11 +213,13 @@ export default function App() {
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('room-state', handleRoomState);
+    socket.on('queue-updated', handleQueueUpdated);
     socket.connect();
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('room-state', handleRoomState);
+      socket.off('queue-updated', handleQueueUpdated);
     };
   }, []);
 
@@ -237,15 +238,17 @@ export default function App() {
     if (!state.currentSong) {
       try { player.stopVideo(); } catch {}
       currentSongIdRef.current = null;
+      currentVideoIdRef.current = null;
       return undefined;
     }
 
     const songId = state.currentSong.id;
-    const songChanged = currentSongIdRef.current !== songId;
+    const videoId = state.currentSong.videoId;
+    const videoChanged = currentVideoIdRef.current !== videoId;
 
-    if (songChanged) {
+    if (videoChanged) {
+      currentVideoIdRef.current = videoId;
       currentSongIdRef.current = songId;
-      const videoId = state.currentSong.videoId;
       if (videoId) {
         player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
       }
@@ -268,7 +271,7 @@ export default function App() {
       try { player.pauseVideo(); } catch {}
     }
     return undefined;
-  }, [state.currentSong?.id, state.isPlaying, volume]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying, volume]);
 
   const stateRef = useRef(state);
   useEffect(() => {
