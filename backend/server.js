@@ -200,7 +200,7 @@ async function getRoomFromDB(roomId) {
   // Check cache first
   if (roomCache.has(roomId)) {
     const cached = roomCache.get(roomId);
-    if (Date.now() - cached._cachedAt < 2000) {
+    if (Date.now() - cached._cachedAt < 5000) {
       return cached;
     }
   }
@@ -979,17 +979,25 @@ io.on('connection', (socket) => {
       }
 
       room.lastUpdatedAt = new Date();
-      await saveRoomToDB(room);
 
+      // EMIT IMMEDIATELY so the client starts playing with zero delay
+      // Update cache so subsequent reads are instant
+      room._cachedAt = Date.now();
+      roomCache.set(room.roomId, room);
+      io.to(roomId).emit('room-state', serializeRoom(room));
+
+      // Save to DB in background (non-blocking)
+      saveRoomToDB(room).catch(err => console.error('Background save failed:', err));
+
+      // Prefetch next queue song audio
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
       
       // Smart Auto-Queue: if they play a new song explicitly, refill the queue based on it!
       if (playNow) {
-        prefillQueue(roomId, nextSong); // don't await, let it run in background
+        prefillQueue(roomId, nextSong);
       }
-      io.to(roomId).emit('room-state', serializeRoom(room));
 
     } catch (error) {
       console.error('Error adding song:', error);
@@ -1293,12 +1301,16 @@ io.on('connection', (socket) => {
       room.currentTime = (typeof clientTime === 'number' && clientTime >= 0) ? clientTime : getSyncedTime(room);
       room.isPlaying = typeof isPlaying === 'boolean' ? isPlaying : !room.isPlaying;
       room.lastUpdatedAt = new Date();
-      await saveRoomToDB(room);
+
+      // Emit immediately, save in background
+      room._cachedAt = Date.now();
+      roomCache.set(room.roomId, room);
+      io.to(roomId).emit('room-state', serializeRoom(room));
+      saveRoomToDB(room).catch(err => console.error('Background save failed:', err));
 
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
-      io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error toggling play:', error);
     }
@@ -1361,12 +1373,7 @@ io.on('connection', (socket) => {
       advanceTrack(room);
 
       // If the queue was empty and we have no next song, fill the queue NOW
-      // and advance again so playback never stops
       if (!room.currentSong && finishedSong) {
-        // Save the current state first (currentSong=null)
-        room.lastUpdatedAt = new Date();
-        await saveRoomToDB(room);
-
         // Await prefillQueue so songs are ready before we continue
         await prefillQueue(roomId, finishedSong);
 
@@ -1377,10 +1384,14 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Save and emit so the client gets the next song
+      // Emit immediately so the client gets the next song with zero delay
       room.lastUpdatedAt = new Date();
-      await saveRoomToDB(room);
+      room._cachedAt = Date.now();
+      roomCache.set(room.roomId, room);
       io.to(roomId).emit('room-state', serializeRoom(room));
+
+      // Save to DB in background
+      saveRoomToDB(room).catch(err => console.error('Background save failed:', err));
 
       // Keep the queue stocked in the background for continuous playback
       const seedSong = room.currentSong || finishedSong;
