@@ -2755,4 +2755,157 @@ textarea.spotify-input {
     color: #b3b3b3; font-size: 0.85rem;
   }
   .pin-icon { color: #1ed760; margin-right: 4px; font-size: 0.8rem; }
+
+  /* --- Mobile Now Playing Full Screen --- */
+  .mobile-now-playing-full {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(to bottom, #4b1a1a, #121212);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .mnp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+
+  .mnp-icon-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    padding: 8px;
+    cursor: pointer;
+  }
+
+  .mnp-header-title {
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .mnp-artwork-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+
+  .mnp-artwork {
+    width: 100%;
+    max-width: 350px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  .mnp-info-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+
+  .mnp-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mnp-meta {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .mnp-title {
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mnp-artist {
+    color: #b3b3b3;
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .mnp-action-btn {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    cursor: pointer;
+    padding: 8px;
+  }
+
+  .mnp-action-btn.liked {
+    color: #1db954;
+  }
+
+  .mnp-progress-wrapper .progress-container {
+    padding: 0;
+    margin: 0 0 8px 0;
+  }
+  
+  .mnp-progress-wrapper .progress-time {
+    color: #b3b3b3;
+    font-size: 0.75rem;
+  }
+
+  .mnp-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .mnp-control-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .mnp-control-btn.secondary {
+    color: #b3b3b3;
+  }
+
+  .mnp-control-btn.active-green {
+    color: #1db954;
+  }
+
+  .mnp-play-btn {
+    background: #fff;
+    color: #000;
+    border: none;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* Adjust mini-player to make it completely clickable */
+  .spotify-bottom-player.mobile-mini-player {
+    cursor: pointer;
+  }
 }
+

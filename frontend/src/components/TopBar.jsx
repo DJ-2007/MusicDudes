@@ -16,12 +16,16 @@ import {
 const HISTORY_KEY = 'mwd_search_history';
 const MAX_HISTORY = 30;
 
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+function loadHistory(roomId) {
+  if (!roomId) return [];
+  const key = `${HISTORY_KEY}_${roomId}`;
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
   catch { return []; }
 }
-function saveHistory(items) {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY))); }
+function saveHistory(roomId, items) {
+  if (!roomId) return;
+  const key = `${HISTORY_KEY}_${roomId}`;
+  try { localStorage.setItem(key, JSON.stringify(items.slice(0, MAX_HISTORY))); }
   catch {}
 }
 
@@ -39,9 +43,13 @@ export default function TopBar({
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchProvider, setSearchProvider] = useState('youtube');
-  const [searchHistory, setSearchHistory] = useState(() => loadHistory());
+  const [searchHistory, setSearchHistory] = useState(() => loadHistory(roomId));
   const [showHistory, setShowHistory] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  useEffect(() => {
+    setSearchHistory(loadHistory(roomId));
+  }, [roomId]);
   const [playlistPopover, setPlaylistPopover] = useState({ open: false, track: null });
   const searchTimeoutRef = useRef(null);
   const searchContainerRef = useRef(null);
@@ -133,14 +141,14 @@ export default function TopBar({
   const addToHistory = (track) => {
     const updated = [track, ...searchHistory.filter(h => h.videoId !== track.videoId)].slice(0, MAX_HISTORY);
     setSearchHistory(updated);
-    saveHistory(updated);
+    saveHistory(roomId, updated);
   };
   const removeFromHistory = (videoId) => {
     const updated = searchHistory.filter(h => h.videoId !== videoId);
     setSearchHistory(updated);
-    saveHistory(updated);
+    saveHistory(roomId, updated);
   };
-  const clearHistory = () => { setSearchHistory([]); saveHistory([]); };
+  const clearHistory = () => { setSearchHistory([]); saveHistory(roomId, []); };
 
   // Handlers
   const handlePlayTrack = (track) => {

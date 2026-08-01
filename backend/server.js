@@ -1,3 +1,117 @@
+
+async function prefillQueue(roomId, seedSong) {
+  try {
+    if (!seedSong) return;
+    let room = await getRoomFromDB(roomId);
+    if (!room) return;
+    // We only want to fill if the queue has fewer than 2 songs
+    if (room.queue && room.queue.length >= 2) return;
+
+    console.log(`🎵 Smart Auto-Queue: finding recommendations based on "${seedSong.title}"`);
+    let candidates = [];
+    
+    if (ytmusicReady && seedSong.videoId) {
+      try {
+        const upNexts = await ytmusic.getUpNexts(seedSong.videoId);
+        if (upNexts && upNexts.length > 0) {
+          candidates = upNexts.slice(0, 15).map(normalizeCandidate);
+        }
+      } catch (e) {}
+
+      if (candidates.length < 5) {
+        try {
+          const artistResults = await ytmusic.searchArtists(seedSong.artist || seedSong.title);
+          const topArtist = artistResults[0];
+          if (topArtist?.artistId) {
+            const artistSongs = await ytmusic.getArtistSongs(topArtist.artistId);
+            candidates = [...candidates, ...artistSongs.slice(0, 10).map(normalizeCandidate)];
+          }
+        } catch (e) {}
+      }
+      
+      if (candidates.length < 5) {
+        const cleanTitle = (seedSong.title || '').replace(/\(.*?\)|\[.*?\]|official|video|audio|lyrics|ft\..*/gi, '').trim();
+        const queries = [
+          `${seedSong.artist || ''} similar songs mix`,
+          `songs like ${cleanTitle}`,
+        ];
+        for (const q of queries) {
+          if (candidates.length >= 8) break;
+          try {
+            const r = await ytmusic.searchSongs(q);
+            candidates = [...candidates, ...r.slice(0, 4).map(normalizeCandidate)];
+          } catch (e) {}
+        }
+      }
+    }
+    
+    if (candidates.length === 0) {
+      try {
+        const query = `${seedSong.artist || seedSong.title} top songs`;
+        const yt = await YouTube.default.search(query, { limit: 8, type: 'video' });
+        candidates = yt.map(entry => ({
+          videoId: entry.id,
+          name: entry.title,
+          artist: { name: entry.channel?.name || 'Unknown Artist' },
+          duration: Math.round((entry.duration || 240000) / 1000),
+          thumbnails: [{ url: entry.thumbnail?.url || `https://img.youtube.com/vi/${entry.id}/hqdefault.jpg` }],
+        }));
+      } catch (e) {}
+    }
+    
+    const seen = new Set();
+    const existingIds = new Set([
+      room.currentSong?.videoId,
+      ...(room.queue || []).map(s => s.videoId),
+      ...(room.history || []).map(s => s.videoId)
+    ]);
+    
+    const filtered = candidates.filter(c => {
+      if (!c?.videoId) return false;
+      if (seen.has(c.videoId) || existingIds.has(c.videoId)) return false;
+      seen.add(c.videoId);
+      return !wasRecentlyPlayed(roomId, c.videoId);
+    });
+
+    const pool = filtered.length > 0 ? filtered : candidates;
+    
+    const songsToAdd = 3 - (room.queue ? room.queue.length : 0);
+    let addedCount = 0;
+    
+    for (let i = 0; i < songsToAdd; i++) {
+      if (pool.length === 0) break;
+      const chosen = weightedPick(pool);
+      if (chosen && chosen.videoId) {
+        const idx = pool.findIndex(c => c.videoId === chosen.videoId);
+        if (idx > -1) pool.splice(idx, 1);
+        
+        const autoSong = {
+          id: `${chosen.videoId}-${Date.now()}-${i}`,
+          videoId: chosen.videoId,
+          title: chosen.name || 'Unknown Title',
+          artist: chosen.artist?.name || 'Unknown Artist',
+          duration: Number(chosen.duration) || 240,
+          thumbnail: `https://img.youtube.com/vi/${chosen.videoId}/hqdefault.jpg`,
+          requestedBy: '🤖 Autoplay',
+          playbackUrl: `/audio/${chosen.videoId}`,
+        };
+        
+        room.queue.push(autoSong);
+        addedCount++;
+      }
+    }
+    
+    if (addedCount > 0) {
+      room.lastUpdatedAt = new Date();
+      await saveRoomToDB(room);
+      io.to(roomId).emit('room-state', serializeRoom(room));
+      console.log(`🎵 Smart Auto-Queue: added ${addedCount} songs`);
+    }
+  } catch (e) {
+    console.error('Auto-queue failed:', e);
+  }
+}
+
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -867,7 +981,13 @@ io.on('connection', (socket) => {
       if (room.queue && room.queue.length > 0) {
         prefetchAudioUrl(room.queue[0].videoId);
       }
+      
+      // Smart Auto-Queue: if they play a song and queue is empty, fill it up!
+      if (playNow && room.queue.length === 0) {
+        prefillQueue(roomId, nextSong); // don't await, let it run in background
+      }
       io.to(roomId).emit('room-state', serializeRoom(room));
+
     } catch (error) {
       console.error('Error adding song:', error);
       socket.emit('error', 'Failed to add song');
@@ -1235,141 +1355,15 @@ io.on('connection', (socket) => {
       // Record the finished song in history before advancing
       if (finishedSong?.videoId) recordPlayHistory(roomId, finishedSong.videoId);
 
+      
       advanceTrack(room);
-
-      // ── SPOTIFY-LIKE AUTOPLAY ──────────────────────────────────────────────
-      // Only triggers when queue becomes empty after advancing
-      if (!room.currentSong && finishedSong) {
-        try {
-          console.log(`🎵 Autoplay: finding recommendation after "${finishedSong.title}"`);
-
-          let candidates = [];
-
-          if (ytmusicReady && finishedSong.videoId) {
-            // ── STRATEGY 1: YouTube Music Radio (getUpNexts) ─────────────────
-            // This is YTMusic's own radio engine — collaborative filtering +
-            // audio-feature similarity, the same core as Spotify Radio.
-            try {
-              const upNexts = await ytmusic.getUpNexts(finishedSong.videoId);
-              if (upNexts && upNexts.length > 0) {
-                candidates = upNexts.slice(0, 8).map(normalizeCandidate);
-                console.log(`  ✅ Strategy 1 (YTMusic Radio): ${candidates.length} candidates`);
-              }
-            } catch (e) {
-              console.warn('  ⚠️  Strategy 1 failed:', e.message);
-            }
-
-            // ── STRATEGY 2: Artist's popular songs ───────────────────────────
-            // Fetch artist's own catalog if we have an artistId from search
-            if (candidates.length < 4) {
-              try {
-                const artistResults = await ytmusic.searchArtists(finishedSong.artist || finishedSong.title);
-                const topArtist = artistResults[0];
-                if (topArtist?.artistId) {
-                  const artistSongs = await ytmusic.getArtistSongs(topArtist.artistId);
-                  const artistCandidates = artistSongs.slice(0, 6).map(normalizeCandidate);
-                  candidates = [...candidates, ...artistCandidates];
-                  console.log(`  ✅ Strategy 2 (Artist songs): +${artistCandidates.length} candidates`);
-                }
-              } catch (e) {
-                console.warn('  ⚠️  Strategy 2 failed:', e.message);
-              }
-            }
-
-            // ── STRATEGY 3: Multi-signal search queries ────────────────────
-            // Build smart queries that mirror Spotify's taste signals:
-            // title-based similarity + artist context + genre hints
-            if (candidates.length < 4) {
-              const title = finishedSong.title || '';
-              const artist = finishedSong.artist || '';
-              // Strip common suffixes for cleaner queries
-              const cleanTitle = title.replace(/\(.*?\)|\[.*?\]|official|video|audio|lyrics|ft\..*/gi, '').trim();
-              const queries = [
-                `${artist} similar songs mix`,
-                `songs like ${cleanTitle}`,
-                `${artist} top songs`,
-              ];
-              for (const q of queries) {
-                if (candidates.length >= 6) break;
-                try {
-                  const r = await ytmusic.searchSongs(q);
-                  const newOnes = r.slice(0, 4).map(normalizeCandidate);
-                  candidates = [...candidates, ...newOnes];
-                  console.log(`  ✅ Strategy 3 query "${q}": +${newOnes.length} candidates`);
-                } catch { }
-              }
-            }
-          }
-
-          // ── STRATEGY 4: YouTube fallback search ───────────────────────────
-          if (candidates.length === 0) {
-            try {
-              const query = `${finishedSong.artist || finishedSong.title} top songs`;
-              const yt = await YouTube.default.search(query, { limit: 8, type: 'video' });
-              candidates = yt.map(entry => ({
-                videoId: entry.id,
-                name: entry.title,
-                artist: { name: entry.channel?.name || 'Unknown Artist' },
-                duration: Math.round((entry.duration || 240000) / 1000),
-                thumbnails: [{ url: entry.thumbnail?.url || `https://img.youtube.com/vi/${entry.id}/hqdefault.jpg` }],
-              }));
-              console.log(`  ✅ Strategy 4 (YT fallback): ${candidates.length} candidates`);
-            } catch (e) {
-              console.warn('  ⚠️  Strategy 4 failed:', e.message);
-            }
-          }
-
-          // ── Deduplicate and filter out recently played ────────────────────
-          const seen = new Set();
-          const filtered = candidates.filter(c => {
-            if (!c?.videoId) return false;
-            if (seen.has(c.videoId)) return false;
-            seen.add(c.videoId);
-            // Allow the finished song's videoId back only if nothing else available
-            return !wasRecentlyPlayed(roomId, c.videoId);
-          });
-
-          // If everything was filtered (edge case), fall back to unfiltered
-          const pool = filtered.length > 0 ? filtered : candidates.filter((c, i, a) =>
-            c?.videoId && a.findIndex(x => x.videoId === c.videoId) === i
-          );
-
-          // ── Weighted random pick (Spotify-style variety) ──────────────────
-          const chosen = weightedPick(pool);
-
-          if (chosen?.videoId) {
-            const autoSong = {
-              id: `${chosen.videoId}-${Date.now()}`,
-              videoId: chosen.videoId,
-              title: chosen.name || 'Unknown Title',
-              artist: chosen.artist?.name || 'Unknown Artist',
-              duration: Number(chosen.duration) || 240,
-              thumbnail: `https://img.youtube.com/vi/${chosen.videoId}/hqdefault.jpg`,
-              requestedBy: '🤖 Autoplay',
-              playbackUrl: `/audio/${chosen.videoId}`,
-            };
-
-            // Record in history immediately
-            recordPlayHistory(roomId, autoSong.videoId);
-
-            room.currentSong = autoSong;
-            room.currentTime = 0;
-            room.isPlaying = true;
-            room.lastUpdatedAt = new Date();
-            await saveRoomToDB(room);
-
-            io.to(roomId).emit('room-state', serializeRoom(room));
-            io.to(roomId).emit('autoplay', {
-              title: autoSong.title,
-              artist: autoSong.artist,
-              thumbnail: autoSong.thumbnail,
-            });
-
-            console.log(`🎵 Autoplay → "${autoSong.title}" by ${autoSong.artist}`);
-            return;
-          }
-        } catch (autoplayErr) {
-          console.warn('Autoplay pipeline failed:', autoplayErr.message);
+      
+      // If queue is running empty, pre-fill it!
+      if (room.queue.length === 0 && finishedSong) {
+        await prefillQueue(roomId, finishedSong);
+        // If we were stuck because queue was empty, try advancing again!
+        if (!room.currentSong && room.queue.length > 0) {
+          advanceTrack(room);
         }
       }
 

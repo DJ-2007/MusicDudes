@@ -7,6 +7,7 @@ import Playlist from './components/Playlist';
 import NowPlayingPanel from './components/NowPlayingPanel';
 import BottomPlayer from './components/BottomPlayer';
 import MobileNav from './components/MobileNav';
+import MobileNowPlaying from './components/MobileNowPlaying';
 import ConfirmDialog from './components/ConfirmDialog';
 import './components/styles/App.css';
 
@@ -58,6 +59,7 @@ export default function App() {
   const currentSongIdRef = useRef(null);
 
   const [activeMobileTab, setActiveMobileTab] = useState('home');
+  const [showMobileNowPlaying, setShowMobileNowPlaying] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -648,36 +650,64 @@ export default function App() {
           </div>
 
           {/* Bottom Player */}
-          <BottomPlayer
-            song={currentSong}
-            playlists={state.playlists}
-            isPlaying={state.isPlaying}
-            isShuffle={state.isShuffle}
-            isRepeat={state.isRepeat}
-            currentTime={state.currentTime}
-            onTogglePlay={handleTogglePlay}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onToggleShuffle={handleToggleShuffle}
-            onToggleRepeat={handleToggleRepeat}
-            onSeek={handleSeek}
-            volume={volume}
-            onVolumeChange={setVolume}
-            onEnableAudio={handleEnableAudio}
-            audioBlocked={audioBlocked && state.isPlaying && Boolean(currentSong)}
-            showQueue={showQueue}
-            onToggleQueue={() => setShowQueue(!showQueue)}
-            activePlaylistName={state.activePlaylistName}
-            onToggleLike={handleToggleLike}
-          />
+          <div 
+            onClick={(e) => {
+              if (window.innerWidth <= 768 && !e.target.closest('button') && !e.target.closest('input')) {
+                setShowMobileNowPlaying(true);
+              }
+            }} 
+            className={window.innerWidth <= 768 ? 'mobile-mini-player' : ''}
+          >
+            <BottomPlayer
+              song={currentSong}
+              playlists={state.playlists}
+              isPlaying={state.isPlaying}
+              isShuffle={state.isShuffle}
+              isRepeat={state.isRepeat}
+              currentTime={state.currentTime}
+              onTogglePlay={handleTogglePlay}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              onToggleShuffle={handleToggleShuffle}
+              onToggleRepeat={handleToggleRepeat}
+              onSeek={handleSeek}
+              volume={volume}
+              onVolumeChange={setVolume}
+              onEnableAudio={handleEnableAudio}
+              audioBlocked={audioBlocked && state.isPlaying && Boolean(currentSong)}
+              showQueue={showQueue}
+              onToggleQueue={() => setShowQueue(!showQueue)}
+              activePlaylistName={state.activePlaylistName}
+              onToggleLike={handleToggleLike}
+            />
+          </div>
 
           <MobileNav
             activeTab={activeMobileTab}
             onHomeClick={scrollToTop}
             onSearchClick={() => setActiveMobileTab('search')}
             onLibraryClick={scrollToPlaylist}
+            onQueueClick={() => setShowQueue(!showQueue)}
           />
 
+          {showMobileNowPlaying && (
+            <MobileNowPlaying
+              song={currentSong}
+              playlists={state.playlists}
+              isPlaying={state.isPlaying}
+              currentTime={state.currentTime}
+              onTogglePlay={handleTogglePlay}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              onToggleShuffle={handleToggleShuffle}
+              onToggleRepeat={handleToggleRepeat}
+              isShuffle={state.isShuffle}
+              isRepeat={state.isRepeat}
+              onSeek={handleSeek}
+              onClose={() => setShowMobileNowPlaying(false)}
+              onToggleLike={handleToggleLike}
+            />
+          )}
 
         </div>
       )}

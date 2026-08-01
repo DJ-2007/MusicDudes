@@ -1,9 +1,9 @@
 import React from 'react';
-import { FaHome, FaSearch, FaPlus } from 'react-icons/fa';
+import { FaHome, FaSearch, FaListUl } from 'react-icons/fa';
 import { BiLibrary } from 'react-icons/bi';
 import './styles/SpotifyTheme.css';
 
-export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, activeTab = 'home' }) {
+export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, onQueueClick, activeTab = 'home' }) {
   return (
     <div className="spotify-mobile-nav">
       <button 
@@ -30,9 +30,9 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
         <span>Your Library</span>
       </button>
 
-      <button className="mobile-nav-btn" onClick={() => {}}>
-        <FaPlus size={24} />
-        <span>Create</span>
+      <button className="mobile-nav-btn" onClick={onQueueClick}>
+        <FaListUl size={24} />
+        <span>Queue</span>
       </button>
     </div>
   );
