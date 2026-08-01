@@ -223,13 +223,16 @@ export default function Sidebar({
               className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
               onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
             >
-              <div className="mobile-playlist-cover liked-songs-cover">
+              <div 
+                className="mobile-playlist-cover liked-songs-cover"
+                style={{ width: '48px', height: '48px', minWidth: '48px', maxWidth: '48px', borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
                 <FaHeart size={20} fill="#fff" />
               </div>
-              <div className="mobile-playlist-meta">
-                <span className="mobile-playlist-name">Liked Songs</span>
-                <span className="mobile-playlist-info">
-                  <span className="pin-icon">📌</span> Playlist • You
+              <div className="mobile-playlist-meta" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                <span className="mobile-playlist-name" style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Liked Songs</span>
+                <span className="mobile-playlist-info" style={{ color: '#a7a7a7', fontSize: '0.75rem', marginTop: '2px' }}>
+                  <span className="pin-icon" style={{ color: '#1ed760', marginRight: '4px' }}>📌</span> Playlist • You
                 </span>
               </div>
             </div>
@@ -245,12 +248,15 @@ export default function Sidebar({
                   className={`library-playlist-item mobile-playlist-row ${activePlaylistName === name ? 'active' : ''}`}
                   onClick={() => onSelectPlaylist && onSelectPlaylist(name)}
                 >
-                  <div className="mobile-playlist-cover regular-playlist-cover">
+                  <div 
+                    className="mobile-playlist-cover regular-playlist-cover"
+                    style={{ width: '48px', height: '48px', minWidth: '48px', maxWidth: '48px', borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
                     <FaMusic size={20} fill="#b3b3b3" />
                   </div>
-                  <div className="mobile-playlist-meta">
-                    <span className="mobile-playlist-name">{name}</span>
-                    <span className="mobile-playlist-info">
+                  <div className="mobile-playlist-meta" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <span className="mobile-playlist-name" style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                    <span className="mobile-playlist-info" style={{ color: '#a7a7a7', fontSize: '0.75rem', marginTop: '2px' }}>
                       Playlist • You
                     </span>
                   </div>
