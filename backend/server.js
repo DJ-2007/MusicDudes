@@ -954,10 +954,8 @@ io.on('connection', (socket) => {
         room.currentSong = nextSong;
         room.currentTime = 0;
         room.isPlaying = true;
-        // Clear old auto-queued songs so the queue changes according to the new song
-        if (room.queue) {
-          room.queue = room.queue.filter(s => s.requestedBy !== '🤖 Autoplay');
-        }
+        // Clear queue completely so prefillQueue builds a fresh vibe-matched queue for the searched song
+        room.queue = [];
       } else {
         room.queue.push(nextSong);
         if (!room.currentSong) {
