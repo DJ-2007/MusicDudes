@@ -55,6 +55,7 @@ export default function App() {
   const [state, setState] = useState(defaultState);
   const [username, setUsername] = useState(() => userSession?.username || 'Guest');
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [isYtReady, setIsYtReady] = useState(false);
   const [volume, setVolume] = useState(0.72);
   const [showQueue, setShowQueue] = useState(true);
   const [toast, setToast] = useState('');
@@ -131,6 +132,7 @@ export default function App() {
         events: {
           onReady: (event) => {
             ytReadyRef.current = true;
+            setIsYtReady(true);
             try {
               event.target.unMute();
               event.target.setVolume(volume * 100);
@@ -256,7 +258,7 @@ export default function App() {
   // Sync YouTube player when song changes or play/pause state changes
   useEffect(() => {
     const player = ytPlayerRef.current;
-    if (!ytReadyRef.current || !player) return undefined;
+    if ((!ytReadyRef.current && !isYtReady) || !player) return undefined;
 
     if (!state.currentSong) {
       try { player.stopVideo(); } catch {}
@@ -304,7 +306,7 @@ export default function App() {
       try { player.pauseVideo(); } catch {}
     }
     return undefined;
-  }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying, volume]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying, volume, isYtReady]);
 
   const stateRef = useRef(state);
   useEffect(() => {
@@ -553,8 +555,11 @@ export default function App() {
 
   const handleAddSong = (input, playlistName) => {
     if (!input) return;
+    const playNow = playlistName === '__queue_only__';
+    if (playNow) {
+      requestAudioPlayback();
+    }
     if (typeof input === 'object' && input.videoId) {
-      const playNow = playlistName === '__queue_only__';
       emitIfReady('add-song', { song: input, username, playlistName, playNow });
       const msg = playlistName && playlistName !== '__queue_only__'
         ? `"${input.title}" added & saved to "${playlistName}"! 🎶`
@@ -565,7 +570,6 @@ export default function App() {
     const isYouTubeLink = /youtu(?:\.be|be\.com)/i.test(input) || /^[A-Za-z0-9_-]{11}$/.test(input);
     const isDirectUrl = (() => { try { const p = new URL(input); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; } })();
     if (!isYouTubeLink && !isDirectUrl) { setToast('Enter a valid YouTube link, video ID, or direct audio URL.'); return; }
-    const playNow = playlistName === '__queue_only__';
     emitIfReady('add-song', { input, username, playlistName, playNow });
   };
 
