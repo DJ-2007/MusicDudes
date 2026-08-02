@@ -110,7 +110,6 @@ async function prefillQueue(roomId, seedSong) {
 
       saveRoomToDB(latestRoom).catch(err => console.error('Background save failed in prefillQueue:', err));
       io.to(roomId).emit('queue-updated', { queue: latestRoom.queue });
-      io.to(roomId).emit('room-state', serializeRoom(latestRoom));
       console.log(`🎵 Smart Auto-Queue: added ${addedCount} songs for room ${roomId}`);
     }
   } catch (e) {
@@ -939,13 +938,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Force-refresh from DB (bypasses cache) — useful after direct DB edits
+  // Refresh room state from cache/DB
   socket.on('refresh-room', async ({ roomId }) => {
     try {
-      roomCache.delete(roomId); // Clear cache so we get fresh DB data
-      const room = await getRoomFromDB(roomId);
+      let room = roomCache.get(roomId);
+      if (!room) {
+        room = await getRoomFromDB(roomId);
+      }
       if (!room) return;
-      io.to(roomId).emit('room-state', serializeRoom(room));
+      socket.emit('room-state', serializeRoom(room));
     } catch (error) {
       console.error('Error refreshing room:', error);
     }

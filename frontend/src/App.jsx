@@ -71,6 +71,7 @@ export default function App() {
   const mainContentRef = useRef(null);
   const currentSongIdRef = useRef(null);
   const currentVideoIdRef = useRef(null);
+  const userPausedRef = useRef(0);
 
   const [activeMobileTab, setActiveMobileTab] = useState('home');
   const [showMobileNowPlaying, setShowMobileNowPlaying] = useState(false);
@@ -217,6 +218,11 @@ export default function App() {
       const player = ytPlayerRef.current;
       const currentVideoId = currentVideoIdRef.current;
       const incomingVideoId = roomState.currentSong?.videoId;
+
+      // If user manually paused recently, preserve pause state against in-flight roomState broadcasts
+      if (userPausedRef.current && (Date.now() - userPausedRef.current) < 5000) {
+        roomState = { ...roomState, isPlaying: false };
+      }
 
       // Only seek YouTube player if we are already playing the SAME video
       if (player && (ytReadyRef.current || isYtReady) && roomState.currentSong && roomState.isPlaying && currentVideoId && currentVideoId === incomingVideoId) {
@@ -637,11 +643,14 @@ export default function App() {
     }
 
     if (!state.isPlaying) {
+      userPausedRef.current = 0;
       setState(prev => ({ ...prev, isPlaying: true }));
       requestAudioPlayback();
     } else {
+      userPausedRef.current = Date.now();
       setState(prev => ({ ...prev, isPlaying: false }));
       try { ytPlayerRef.current?.pauseVideo?.(); } catch {}
+      try { audioRef.current?.pause?.(); } catch {}
     }
 
     emitIfReady('toggle-play', { isPlaying: !state.isPlaying, currentTime: currentAudioTime });
