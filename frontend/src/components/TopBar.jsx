@@ -270,19 +270,11 @@ export default function TopBar({
 
   return (
     <header className="spotify-topbar">
-      {/* Left: Home + Navigation */}
+      {/* Left: Home */}
       <div className="topbar-left">
         <button className="topbar-home-btn" onClick={onHomeClick} title="Home">
           <FaHome size={20} />
         </button>
-        <div className="topbar-navigation-chevrons">
-          <button className="chevron-btn" disabled title="Go back">
-            <FaChevronLeft size={13} />
-          </button>
-          <button className="chevron-btn" disabled title="Go forward">
-            <FaChevronRight size={13} />
-          </button>
-        </div>
       </div>
 
       {/* Center: Search Bar */}
