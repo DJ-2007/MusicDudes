@@ -867,16 +867,25 @@ app.post('/room/join', async (req, res) => {
   }
 });
 
-// Get room state (still available for socket reconnection)
-app.get('/room/:roomId/state', async (req, res) => {
+// Sync playback position on room leave / page unload (guaranteed via Beacon / Fetch keepalive)
+app.post('/room/sync-leave', express.json({ type: '*/*' }), async (req, res) => {
   try {
-    const room = await getRoomFromDB(req.params.roomId);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
+    const { roomId, currentTime } = req.body || {};
+    if (!roomId) return res.status(400).json({ error: 'Missing roomId' });
+
+    let room = await getRoomFromDB(roomId);
+    if (room && room.currentSong) {
+      const validTime = Math.max(0, Number(currentTime) || 0);
+      room.currentTime = validTime;
+      room.isPlaying = false;
+      room.lastUpdatedAt = new Date();
+      room._cachedAt = Date.now();
+      roomCache.set(roomId, room);
+      await saveRoomToDB(room);
     }
-    res.json(serializeRoom(room));
-  } catch (error) {
-    res.status(404).json({ error: 'Room not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

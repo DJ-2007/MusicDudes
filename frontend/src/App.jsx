@@ -288,7 +288,7 @@ export default function App() {
     if (videoChanged && videoId) {
       let loaded = false;
       // Start a brand-new track at 0 seconds, unless restoring session on initial page load
-      const isInitialRestore = currentVideoIdRef.current === null && (state.currentTime || 0) > 2;
+      const isInitialRestore = currentVideoIdRef.current === null && (state.currentTime || 0) > 0;
       const startSec = isInitialRestore ? (state.currentTime || 0) : 0;
 
       // Engine 1: YouTube IFrame Player
@@ -452,16 +452,15 @@ export default function App() {
     return () => clearInterval(interval);
   }, [joined]);
 
-  // Save playback position when user closes tab / navigates away
+  // Save playback position when user closes tab / navigates away / hides page (guaranteed via Beacon)
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      const socket = socketRef.current;
+    const handleLeave = () => {
       const room = roomRef.current;
-      if (!socket || !room) return;
+      if (!room) return;
 
       // Get the most accurate current time from the player
       let currentTime = stateRef.current.currentTime || 0;
-      if (ytPlayerRef.current && ytReadyRef.current) {
+      if (ytPlayerRef.current && (ytReadyRef.current || isYtReady)) {
         try {
           const ytTime = ytPlayerRef.current.getCurrentTime?.();
           if (typeof ytTime === 'number' && ytTime > 0) currentTime = ytTime;
@@ -473,12 +472,41 @@ export default function App() {
         } catch {}
       }
 
-      // Emit sync-time to save playback position (pause the song since user is leaving)
-      socket.emit('toggle-play', { roomId: room, isPlaying: false, currentTime });
+      // Also send socket emit in case socket is still open
+      try {
+        socketRef.current?.emit('toggle-play', { roomId: room, isPlaying: false, currentTime });
+      } catch {}
+
+      // Send guaranteed HTTP beacon request that browser will complete even after page close
+      try {
+        const payload = JSON.stringify({ roomId: room, currentTime });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(`${API_URL}/room/sync-leave`, new Blob([payload], { type: 'application/json' }));
+        } else {
+          fetch(`${API_URL}/room/sync-leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true
+          }).catch(() => {});
+        }
+      } catch {}
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handleLeave();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+    window.addEventListener('pagehide', handleLeave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleLeave);
+      window.removeEventListener('pagehide', handleLeave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Auto-start / Auto-join for logged in user session (INSTANT 0-DELAY)
