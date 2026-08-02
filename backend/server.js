@@ -981,10 +981,12 @@ io.on('connection', (socket) => {
         room.isPlaying = true;
         // Clear queue completely so prefillQueue builds a fresh vibe-matched queue for the searched song
         room.queue = [];
+        if (nextSong.videoId) resolveAndCacheAudioUrl(nextSong.videoId).catch(() => {});
       } else {
         room.queue.push(nextSong);
         if (!room.currentSong) {
           advanceTrack(room);
+          if (room.currentSong?.videoId) resolveAndCacheAudioUrl(room.currentSong.videoId).catch(() => {});
         }
       }
 
@@ -1276,11 +1278,13 @@ io.on('connection', (socket) => {
         room.queue = [];
       }
 
+      if (song.videoId) resolveAndCacheAudioUrl(song.videoId).catch(() => {});
+
       room.lastUpdatedAt = new Date();
       await saveRoomToDB(room);
 
       if (room.queue && room.queue.length > 0) {
-        prefetchAudioUrl(room.queue[0].videoId);
+        resolveAndCacheAudioUrl(room.queue[0].videoId).catch(() => {});
       }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {
@@ -1309,13 +1313,15 @@ io.on('connection', (socket) => {
       room.isPlaying = true;
       room.lastUpdatedAt = new Date();
 
+      if (room.currentSong?.videoId) resolveAndCacheAudioUrl(room.currentSong.videoId).catch(() => {});
+
       // Remove the selected song and all skipped songs from the queue
       room.queue = room.queue.slice(songIndex + 1);
 
       await saveRoomToDB(room);
 
       if (room.queue && room.queue.length > 0) {
-        prefetchAudioUrl(room.queue[0].videoId);
+        resolveAndCacheAudioUrl(room.queue[0].videoId).catch(() => {});
       }
       io.to(roomId).emit('room-state', serializeRoom(room));
     } catch (error) {

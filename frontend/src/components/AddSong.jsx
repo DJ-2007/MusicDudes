@@ -263,9 +263,11 @@ export default function AddSong({
       <div
         key={track.videoId || `${track.title}-${track.artist}`}
         className="search-result-item"
+        onClick={() => handlePlayTrack(track)}
+        style={{ cursor: 'pointer' }}
       >
         <img src={track.thumbnail} alt={track.title} className="search-result-thumb" />
-        <div className="search-result-meta" onClick={() => handlePlayTrack(track)} style={{ cursor: 'pointer', flex: 1 }}>
+        <div className="search-result-meta" style={{ flex: 1 }}>
           <span className="search-result-title">{track.title}</span>
           <span className="search-result-artist">{track.artist}</span>
         </div>
