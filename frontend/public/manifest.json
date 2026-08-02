@@ -4,9 +4,15 @@
   "description": "Synchronized real-time music player app",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/icon-192.png",
       "type": "image/png",
-      "sizes": "512x512 192x192 144x144 96x96 72x72 48x48",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     }
   ],
