@@ -439,13 +439,43 @@ export default function App() {
     return () => clearInterval(interval);
   }, [joined]);
 
+  // Save playback position when user closes tab / navigates away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const socket = socketRef.current;
+      const room = roomRef.current;
+      if (!socket || !room) return;
+
+      // Get the most accurate current time from the player
+      let currentTime = stateRef.current.currentTime || 0;
+      if (ytPlayerRef.current && ytReadyRef.current) {
+        try {
+          const ytTime = ytPlayerRef.current.getCurrentTime?.();
+          if (typeof ytTime === 'number' && ytTime > 0) currentTime = ytTime;
+        } catch {}
+      } else if (audioRef.current) {
+        try {
+          const audioTime = audioRef.current.currentTime;
+          if (typeof audioTime === 'number' && audioTime > 0) currentTime = audioTime;
+        } catch {}
+      }
+
+      // Emit sync-time to save playback position (pause the song since user is leaving)
+      socket.emit('toggle-play', { roomId: room, isPlaying: false, currentTime });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Auto-start / Auto-join for logged in user session (INSTANT 0-DELAY)
   useEffect(() => {
     if (userSession && userSession.username && !joined) {
-      const targetRoom = userSession.lastRoom || 'main';
+      // Use the user's personal room (derived from email) so state persists per-user
+      const personalRoom = userSession.lastRoom || userSession.email?.replace(/[^a-zA-Z0-9]/g, '_') || 'main';
       const user = userSession.username;
       setUsername(user);
-      roomRef.current = targetRoom;
+      roomRef.current = personalRoom;
       setJoined(true);
       setLoading(false);
 
@@ -454,16 +484,26 @@ export default function App() {
       if (!socket.connected) {
         socket.connect();
       }
-      socket.emit('join-room', { roomId: targetRoom, username: user });
-      socket.emit('get-room-state', { roomId: targetRoom });
+      socket.emit('join-room', { roomId: personalRoom, username: user });
+      socket.emit('get-room-state', { roomId: personalRoom });
 
-      // Background HTTP sync (non-blocking)
-      fetch(`${API_URL}/room/create`, {
+      // Background HTTP sync — create the room if it doesn't exist, or join it
+      fetch(`${API_URL}/room/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName: targetRoom, password: '', username: user }),
+        body: JSON.stringify({ roomName: personalRoom, password: '', username: user }),
       })
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 404) {
+          // Room doesn't exist yet — create it
+          return fetch(`${API_URL}/room/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomName: personalRoom, password: '', username: user }),
+          }).then(r => r.json());
+        }
+        return res.json();
+      })
       .then(payload => {
         if (payload.state) {
           setState(payload.state);
@@ -474,10 +514,12 @@ export default function App() {
   }, [userSession, joined]);
 
   const handleEmailSignIn = ({ email, username: enteredUsername }) => {
-    const session = { email, username: enteredUsername, lastRoom: 'main' };
+    // Create a personal room ID from the email so each user has their own persistent space
+    const personalRoom = 'user_' + email.trim().replace(/[^a-zA-Z0-9]/g, '_');
+    const session = { email: email.trim(), username: enteredUsername, lastRoom: personalRoom };
     try { localStorage.setItem('musicdudes_user', JSON.stringify(session)); } catch {}
     setUsername(enteredUsername);
-    roomRef.current = 'main';
+    roomRef.current = personalRoom;
     setJoined(true);
     setUserSession(session);
 
@@ -486,8 +528,8 @@ export default function App() {
     if (!socket.connected) {
       socket.connect();
     }
-    socket.emit('join-room', { roomId: 'main', username: enteredUsername });
-    socket.emit('get-room-state', { roomId: 'main' });
+    socket.emit('join-room', { roomId: personalRoom, username: enteredUsername });
+    socket.emit('get-room-state', { roomId: personalRoom });
   };
 
   const handleCreateRoomFromModal = async ({ roomName, password }) => {
