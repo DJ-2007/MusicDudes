@@ -194,11 +194,19 @@ export default function Playlist({
       <div className="playlist-action-bar">
         <button 
           className="playlist-play-button"
-          onClick={onTogglePlay}
-          title={isPlaying ? 'Pause' : 'Play'}
+          onClick={() => {
+            if (playlist.length === 0) return;
+            const isPlayingThisPlaylist = playlist.some(s => s.id === currentSong?.id || s.videoId === currentSong?.videoId);
+            if (isPlayingThisPlaylist) {
+              onTogglePlay && onTogglePlay();
+            } else {
+              onPlayFromPlaylist && onPlayFromPlaylist(playlist[0]);
+            }
+          }}
+          title={isPlaying && playlist.some(s => s.id === currentSong?.id || s.videoId === currentSong?.videoId) ? 'Pause' : 'Play'}
           disabled={playlist.length === 0}
         >
-          {isPlaying && currentSong ? <FaPause size={20} /> : <FaPlay size={20} style={{ marginLeft: '4px' }} />}
+          {isPlaying && playlist.some(s => s.id === currentSong?.id || s.videoId === currentSong?.videoId) ? <FaPause size={20} /> : <FaPlay size={20} style={{ marginLeft: '4px' }} />}
         </button>
         {activePlaylistName === 'Liked Songs' && (
           <FaHeart size={28} style={{ color: '#1db954', cursor: 'pointer' }} />
