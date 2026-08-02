@@ -204,6 +204,7 @@ function normalizeCandidate(c) {
 // --- Database Functions ---
 
 async function getRoomFromDB(roomId) {
+  if (!roomId) return null;
   // Check cache first
   if (roomCache.has(roomId)) {
     const cached = roomCache.get(roomId);
@@ -220,8 +221,30 @@ async function getRoomFromDB(roomId) {
     .single();
 
   if (error || !data || !data.state) {
-    roomCache.delete(roomId);
-    return null;
+    const defaultRoom = {
+      roomId,
+      password: '',
+      currentSong: null,
+      playlist: [],
+      playlists: [
+        { name: 'Liked Songs', songs: [] }
+      ],
+      activePlaylistName: 'Liked Songs',
+      queue: [],
+      users: [],
+      history: [],
+      isPlaying: false,
+      isShuffle: false,
+      isRepeat: false,
+      currentTime: 0,
+      hostId: null,
+      lastUpdatedAt: new Date(),
+      createdAt: new Date(),
+      _cachedAt: Date.now()
+    };
+    roomCache.set(roomId, defaultRoom);
+    saveRoomToDB(defaultRoom).catch(() => {});
+    return defaultRoom;
   }
 
   let room = data.state;
@@ -751,8 +774,8 @@ app.post('/room/create', async (req, res) => {
     const { roomName, password, username = 'Guest' } = req.body || {};
     const normalizedRoomId = roomName?.trim();
 
-    if (!normalizedRoomId || !password) {
-      return res.status(400).json({ error: 'Room name and password are required.' });
+    if (!normalizedRoomId) {
+      return res.status(400).json({ error: 'Room name is required.' });
     }
 
     // Check if room already exists
@@ -766,8 +789,8 @@ app.post('/room/create', async (req, res) => {
       return res.status(409).json({ error: 'A room with this name already exists. Try joining it instead.' });
     }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    // Hash the password if provided
+    const hashedPassword = await bcrypt.hash(password || '', SALT_ROUNDS);
 
     const newRoomState = {
       roomId: normalizedRoomId,
@@ -813,8 +836,8 @@ app.post('/room/join', async (req, res) => {
     const { roomName, password, username = 'Guest' } = req.body || {};
     const normalizedRoomId = roomName?.trim();
 
-    if (!normalizedRoomId || !password) {
-      return res.status(400).json({ error: 'Room name and password are required.' });
+    if (!normalizedRoomId) {
+      return res.status(400).json({ error: 'Room name is required.' });
     }
 
     const { data: roomEntry, error } = await supabase
@@ -827,10 +850,12 @@ app.post('/room/join', async (req, res) => {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, roomEntry.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+    // Verify password if room has a password
+    if (roomEntry.password) {
+      const isPasswordValid = await bcrypt.compare(password || '', roomEntry.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: 'Incorrect password. Please try again.' });
+      }
     }
 
     roomEntry.state._cachedAt = Date.now();
