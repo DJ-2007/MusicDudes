@@ -30,7 +30,10 @@ export default function MobileNav({ onHomeClick, onSearchClick, onLibraryClick, 
         <span>Your Library</span>
       </button>
 
-      <button className="mobile-nav-btn" onClick={onQueueClick}>
+      <button 
+        className={`mobile-nav-btn ${activeTab === 'queue' ? 'active' : ''}`} 
+        onClick={onQueueClick}
+      >
         <FaListUl size={24} />
         <span>Queue</span>
       </button>

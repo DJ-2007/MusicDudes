@@ -58,6 +58,7 @@ export default function MobileNowPlaying({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
     >
+      <div className="mnp-drag-pill" />
       <div className="mnp-header">
         <button className="mnp-icon-btn" onClick={onClose}>
           <FaChevronDown size={20} />
