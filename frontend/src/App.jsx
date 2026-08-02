@@ -185,17 +185,21 @@ export default function App() {
 
   const requestAudioPlayback = async () => {
     const player = ytPlayerRef.current;
-    if (!player || !ytReadyRef.current || !state.currentSong) return;
-    try {
-      if (typeof player.unMute === 'function') player.unMute();
-      if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
-      if (typeof player.playVideo === 'function') player.playVideo();
-      audioUnlockedRef.current = true;
-      setAudioBlocked(false);
-    } catch {
-      audioUnlockedRef.current = false;
-      setAudioBlocked(true);
+    if (player && typeof player.playVideo === 'function') {
+      try {
+        if (typeof player.unMute === 'function') player.unMute();
+        if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+        player.playVideo();
+      } catch {}
     }
+    if (audioRef.current && state.currentSong) {
+      try {
+        audioRef.current.volume = volume;
+        audioRef.current.play().catch(() => {});
+      } catch {}
+    }
+    audioUnlockedRef.current = true;
+    setAudioBlocked(false);
   };
 
   useEffect(() => {
@@ -210,20 +214,16 @@ export default function App() {
       setState(prev => ({ ...prev, queue }));
     };
     const handleRoomState = (roomState) => {
-      // Smart sync: don't blindly overwrite currentTime if our YT player is close
       const player = ytPlayerRef.current;
-      if (player && ytReadyRef.current && roomState.currentSong && roomState.isPlaying) {
+      if (player && (ytReadyRef.current || isYtReady) && roomState.currentSong && roomState.isPlaying) {
         try {
           const ytTime = player.getCurrentTime?.();
           if (typeof ytTime === 'number') {
             const serverTime = roomState.currentTime || 0;
             const diff = Math.abs(ytTime - serverTime);
-            // Increase tolerance to 8s so background queue updates don't trigger accidental seeks
             if (diff < 8) {
-              // Server time is close to our player — keep local time, don't seek
               roomState = { ...roomState, currentTime: ytTime };
             } else {
-              // Large difference — this is a real seek event (e.g. another user dragged the progress bar)
               player.seekTo(serverTime, true);
             }
           }
@@ -255,13 +255,17 @@ export default function App() {
   }, [toast]);
 
   // Sync audio source when the song changes
-  // Sync YouTube player when song changes or play/pause state changes
+  // Dual Engine: YouTube Player + HTML5 Direct Audio Stream Fallback
   useEffect(() => {
     const player = ytPlayerRef.current;
-    if ((!ytReadyRef.current && !isYtReady) || !player) return undefined;
 
     if (!state.currentSong) {
-      try { player.stopVideo(); } catch {}
+      if (player && typeof player.stopVideo === 'function') {
+        try { player.stopVideo(); } catch {}
+      }
+      if (audioRef.current) {
+        try { audioRef.current.pause(); audioRef.current.src = ''; } catch {}
+      }
       currentSongIdRef.current = null;
       currentVideoIdRef.current = null;
       return undefined;
@@ -275,35 +279,63 @@ export default function App() {
       currentVideoIdRef.current = videoId;
       currentSongIdRef.current = songId;
       if (videoId) {
-        try {
-          if (typeof player.unMute === 'function') player.unMute();
-          if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
-          player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
-          if (typeof player.playVideo === 'function') player.playVideo();
-        } catch (err) {
-          console.error('Error loading video by ID:', err);
+        // Engine 1: YouTube IFrame Player
+        if (player && typeof player.loadVideoById === 'function') {
+          try {
+            if (typeof player.unMute === 'function') player.unMute();
+            if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+            player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
+            if (typeof player.playVideo === 'function') player.playVideo();
+          } catch (err) {
+            console.error('Error loading YouTube video by ID:', err);
+          }
+        }
+
+        // Engine 2: HTML5 Proxy Stream Fallback
+        if (audioRef.current) {
+          try {
+            audioRef.current.src = `${API_URL}/audio/${videoId}`;
+            audioRef.current.volume = volume;
+            if (state.currentTime) audioRef.current.currentTime = state.currentTime;
+            if (state.isPlaying) {
+              audioRef.current.play().catch(() => {});
+            }
+          } catch (e) {
+            console.error('HTML5 audio error:', e);
+          }
         }
       }
     }
 
-    try {
-      if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
-    } catch {}
+    if (player && typeof player.setVolume === 'function') {
+      try { player.setVolume(volume * 100); } catch {}
+    }
+    if (audioRef.current) {
+      try { audioRef.current.volume = volume; } catch {}
+    }
 
     if (state.isPlaying) {
-      try {
-        const playerState = player.getPlayerState?.();
-        // YT.PlayerState.PLAYING = 1, BUFFERING = 3
-        if (playerState !== 1 && playerState !== 3) {
-          if (typeof player.unMute === 'function') player.unMute();
-          if (typeof player.playVideo === 'function') player.playVideo();
-        }
-      } catch {
-        audioUnlockedRef.current = false;
-        setAudioBlocked(true);
+      // Engine 1 sync
+      if (player && typeof player.getPlayerState === 'function') {
+        try {
+          const playerState = player.getPlayerState();
+          if (playerState !== 1 && playerState !== 3) {
+            if (typeof player.unMute === 'function') player.unMute();
+            if (typeof player.playVideo === 'function') player.playVideo();
+          }
+        } catch {}
+      }
+      // Engine 2 sync
+      if (audioRef.current && audioRef.current.paused) {
+        try { audioRef.current.play().catch(() => {}); } catch {}
       }
     } else {
-      try { player.pauseVideo(); } catch {}
+      if (player && typeof player.pauseVideo === 'function') {
+        try { player.pauseVideo(); } catch {}
+      }
+      if (audioRef.current && !audioRef.current.paused) {
+        try { audioRef.current.pause(); } catch {}
+      }
     }
     return undefined;
   }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying, volume, isYtReady]);
