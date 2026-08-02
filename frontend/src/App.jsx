@@ -563,6 +563,16 @@ export default function App() {
     emitIfReady('previous-song');
   };
 
+  const handleToggleShuffle = () => {
+    setState(prev => ({ ...prev, isShuffle: !prev.isShuffle }));
+    emitIfReady('toggle-shuffle');
+  };
+
+  const handleToggleRepeat = () => {
+    setState(prev => ({ ...prev, isRepeat: !prev.isRepeat }));
+    emitIfReady('toggle-repeat');
+  };
+
   const handleSeek = (time) => {
     setState((current) => ({ ...current, currentTime: time }));
     emitIfReady('seek-song', { currentTime: time });
