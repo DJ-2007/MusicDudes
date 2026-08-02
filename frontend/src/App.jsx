@@ -522,19 +522,11 @@ export default function App() {
       } catch {}
     };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        handleLeave();
-      }
-    };
-
     window.addEventListener('beforeunload', handleLeave);
     window.addEventListener('pagehide', handleLeave);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('beforeunload', handleLeave);
       window.removeEventListener('pagehide', handleLeave);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
