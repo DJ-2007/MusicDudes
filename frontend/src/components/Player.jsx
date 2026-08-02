@@ -25,6 +25,10 @@ export default function Player({
   onNext,
   onPrevious,
   onSeek,
+  onToggleShuffle,
+  onToggleRepeat,
+  isShuffle,
+  isRepeat,
 }) {
   if (!song) {
     return (
@@ -54,7 +58,13 @@ export default function Player({
       </div>
 
       <div className="player-controls">
-        <button type="button" className="control-mini spotify-button" aria-label="Shuffle">
+        <button 
+          type="button" 
+          className={`control-mini spotify-button ${isShuffle ? 'active-green' : ''}`} 
+          onClick={onToggleShuffle}
+          style={isShuffle ? { color: '#1db954' } : {}}
+          aria-label="Shuffle"
+        >
           <FaRandom />
         </button>
         <button type="button" className="control-mini spotify-button" onClick={onPrevious} aria-label="Previous song">
@@ -66,7 +76,13 @@ export default function Player({
         <button type="button" className="control-mini spotify-button" onClick={onNext} aria-label="Next song">
           <FaForward />
         </button>
-        <button type="button" className="control-mini spotify-button" aria-label="Repeat">
+        <button 
+          type="button" 
+          className={`control-mini spotify-button ${isRepeat ? 'active-green' : ''}`} 
+          onClick={onToggleRepeat}
+          style={isRepeat ? { color: '#1db954' } : {}}
+          aria-label="Repeat"
+        >
           <FaRedo />
         </button>
       </div>
