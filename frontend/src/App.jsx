@@ -363,6 +363,35 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
+  // Background audio & Lock Screen Media Session controls (Spotify-style)
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !state.currentSong) return;
+
+    try {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: state.currentSong.title || 'MusicDudes Track',
+        artist: state.currentSong.artist || 'MusicDudes',
+        album: 'MusicDudes',
+        artwork: [
+          { src: state.currentSong.thumbnail || '/favicon.png', sizes: '512x512', type: 'image/png' },
+          { src: state.currentSong.thumbnail || '/favicon.png', sizes: '192x192', type: 'image/png' }
+        ]
+      });
+
+      navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
+
+      navigator.mediaSession.setActionHandler('play', () => handleTogglePlay());
+      navigator.mediaSession.setActionHandler('pause', () => handleTogglePlay());
+      navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevious());
+      navigator.mediaSession.setActionHandler('nexttrack', () => handleNext());
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number') handleSeek(details.seekTime);
+      });
+    } catch (e) {
+      console.error('MediaSession initialization error:', e);
+    }
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying]);
+
 
 
   // Time sync: periodically check YT player time and sync with server

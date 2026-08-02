@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.musicdudes.twa",
+        "sha256_cert_fingerprints": ["F0:7B:3E:F1:D6:EE:CD:5F:4D:C3:4C:1C:E2:99:A7:59:E1:5E:0B:A4:E1:AE:6E:4C:E3:C9:B9:21:08:5A:20:57"]
+      }
+    }]
