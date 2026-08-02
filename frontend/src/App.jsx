@@ -810,9 +810,44 @@ export default function App() {
   return (
     <>
       <audio ref={audioRef} preload="auto" style={{ display: 'none' }} />
-      <div id="yt-player-hidden" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden', pointerEvents: 'none' }} />
+      <div 
+        id="yt-player-hidden" 
+        style={{ 
+          position: 'fixed', 
+          bottom: '0px', 
+          right: '0px', 
+          width: '200px', 
+          height: '200px', 
+          opacity: 0.001, 
+          pointerEvents: 'none', 
+          zIndex: 1 
+        }} 
+      />
       <ConfirmDialog {...confirmConfig} />
       {toast ? <div className="toast toast-info">{toast}</div> : null}
+
+      {audioBlocked && (
+        <div 
+          onClick={() => requestAudioPlayback()} 
+          style={{
+            position: 'fixed',
+            bottom: '90px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#1db954',
+            color: '#000',
+            fontWeight: '700',
+            padding: '10px 24px',
+            borderRadius: '50px',
+            cursor: 'pointer',
+            zIndex: 99999,
+            boxShadow: '0 8px 24px rgba(29,185,84,0.5)',
+            fontSize: '0.9rem'
+          }}
+        >
+          🎵 Tap to unmute audio output
+        </div>
+      )}
 
       {!userSession ? (
         <EmailAuthPage onSignIn={handleEmailSignIn} loading={loading} error={error} />
