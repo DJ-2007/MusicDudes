@@ -1,0 +1,24 @@
+{
+  "short_name": "MusicDudes",
+  "name": "MusicDudes - Real-Time Music Player",
+  "description": "Synchronized real-time music player app",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#121212",
+  "theme_color": "#1db954",
+  "display": "standalone",
+  "orientation": "portrait"
+}
