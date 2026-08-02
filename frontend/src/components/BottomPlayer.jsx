@@ -73,16 +73,27 @@ export default function BottomPlayer({
                 {song.artist || 'Unknown Artist'}
               </div>
             </div>
-            <button
-              className={`bottom-like-btn ${isLiked ? 'liked' : ''}`}
-              onClick={() => onToggleLike && onToggleLike(song)}
-              title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-            >
-              {isLiked
-                ? <FaHeart style={{ color: '#1db954' }} />
-                : <FaRegHeart style={{ color: '#b3b3b3' }} />
-              }
-            </button>
+            <div className="mobile-pill-actions">
+              <button className="mobile-action-icon-btn" title="Connect to a device">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 2.75C6 1.784 6.784 1 7.75 1h8.5c.966 0 1.75.784 1.75 1.75v18.5A1.75 1.75 0 0 1 16.25 23h-8.5A1.75 1.75 0 0 1 6 21.25V2.75zm1.75-.25a.25.25 0 0 0-.25.25v18.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25h-8.5zM12 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"></path></svg>
+              </button>
+              <button
+                className={`bottom-like-btn ${isLiked ? 'liked' : ''}`}
+                onClick={(e) => { e.stopPropagation(); onToggleLike && onToggleLike(song); }}
+                title={isLiked ? 'Saved' : 'Save to Liked Songs'}
+              >
+                {isLiked
+                  ? <svg viewBox="0 0 24 24" width="20" height="20" fill="#1db954"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.707 7.707l-5.5 5.5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 011.414-1.414L10.5 13.086l4.793-4.793a1 1 0 011.414 1.414z"></path></svg>
+                  : <FaRegHeart style={{ color: '#b3b3b3' }} />
+                }
+              </button>
+              <button
+                className="mobile-pill-play-btn"
+                onClick={(e) => { e.stopPropagation(); onTogglePlay(); }}
+              >
+                {isPlaying ? <FaPause size={13} fill="#fff" /> : <FaPlay size={13} fill="#fff" style={{ marginLeft: '2px' }} />}
+              </button>
+            </div>
           </>
         ) : (
           <div className="bottom-no-song">

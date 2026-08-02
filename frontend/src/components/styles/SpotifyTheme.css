@@ -2507,67 +2507,66 @@ textarea.spotify-input {
 }
 
 @media (max-width: 768px) {
-  /* The Mobile Nav Bar */
+  /* The Mobile Nav Bar (5 Tabs) */
   .spotify-mobile-nav {
     display: flex;
-    justify-content: center;
-    gap: 40px;
+    justify-content: space-around;
     align-items: center;
-    background: rgba(0, 0, 0, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    gap: 0;
+    background: #000000;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 70px;
+    height: 64px;
     z-index: 2000;
     padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .mobile-nav-btn {
     background: none;
     border: none;
-    color: #b3b3b3;
+    color: #a7a7a7;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    font-size: 0.7rem;
-    font-weight: 500;
+    gap: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: color 0.15s;
     flex: 1;
     height: 100%;
+    padding: 6px 0;
   }
 
   .mobile-nav-btn.active, .mobile-nav-btn:hover {
-    color: #fff;
+    color: #ffffff;
   }
 
   /* App Layout Space for Mobile Nav */
   .spotify-app-layout {
     height: 100vh;
-    padding-bottom: 70px;
+    padding-bottom: 64px;
     overflow: hidden;
   }
 
-  /* Spotify Mobile Mini Player */
+  /* Spotify Floating Mobile Mini Player Pill */
   .spotify-bottom-player {
     position: fixed;
-    bottom: 78px; /* sits right above the 70px mobile nav */
+    bottom: 70px; /* sits right above the 64px mobile nav */
     left: 8px;
     right: 8px;
     width: auto;
     height: 56px !important;
-    background: linear-gradient(90deg, #4b1a1a, #2a0b0b) !important;
-    border-radius: 6px;
+    background: #2b1515 !important; /* dark brownish red Spotify pill background */
+    border-radius: 12px !important;
     flex-direction: row !important;
-    padding: 0 12px !important;
+    padding: 6px 12px !important;
     z-index: 1500;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     border-top: none;
     align-items: center;
   }
@@ -2575,53 +2574,52 @@ textarea.spotify-input {
   .bottom-left-section {
     width: auto !important;
     flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     overflow: hidden;
-    margin-right: 8px;
+    margin-right: 4px;
   }
 
   .bottom-left-section img {
     width: 40px !important;
     height: 40px !important;
-    border-radius: 4px;
+    border-radius: 8px !important;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .mobile-pill-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .mobile-action-icon-btn,
+  .mobile-pill-actions .bottom-like-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-pill-play-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .bottom-center-section {
-    width: auto !important;
-    flex-direction: row;
-    gap: 12px;
-  }
-  
-  /* Hide unnecessary controls in mini player, but keep Prev/Next */
-  .bottom-control-btn {
-    display: none !important;
-  }
-  
-  .bottom-control-btn.btn-prev,
-  .bottom-control-btn.btn-next {
-    display: flex !important;
-    background: transparent !important;
-    color: #fff !important;
-  }
-  .bottom-control-btn.btn-prev svg,
-  .bottom-control-btn.btn-next svg {
-    fill: #fff !important;
-  }
-
-  /* Make sure the play/pause button overrides the display:none */
-  .bottom-play-pause-btn {
-    display: flex !important;
-    background: transparent !important;
-    color: #fff !important;
-    width: 32px !important;
-    height: 32px !important;
-  }
-
-  .bottom-play-pause-btn svg {
-    fill: #fff;
-  }
-
-  .bottom-seek-bar-wrapper,
-  .bottom-right-section {
     display: none !important;
   }
 

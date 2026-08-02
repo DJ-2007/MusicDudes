@@ -115,67 +115,42 @@ export default function Sidebar({
 
         {/* Library Panel */}
         <div className="sidebar-section-card library-section">
-          <div className="library-header">
-            <div className="library-title-group" onClick={onLibraryClick}>
-              <span className="library-label" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"></path></svg>
+          <div className="library-header mobile-library-header" style={{ padding: '12px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="library-title-group" onClick={onLibraryClick} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="mobile-avatar-circle" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1db954', color: '#000', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>
+                JD
+              </div>
+              <span className="library-label" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
                 Your Library
               </span>
             </div>
-            <div className="library-header-actions" style={{ display: 'flex', gap: '16px', color: '#b3b3b3' }}>
+            <div className="library-header-actions" style={{ display: 'flex', gap: '20px', alignItems: 'center', color: '#fff' }}>
+              <button onClick={() => setSearchOpen(!searchOpen)} title="Search library" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+                <FaSearch size={20} />
+              </button>
               <button className="library-add-btn" onClick={() => setModalOpen(true)} title="Create playlist" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
-                <FaPlus size={16} />
-              </button>
-              <button title="Show more" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
-                <FaArrowRight size={16} style={{ transform: 'rotate(-45deg)' }} />
+                <FaPlus size={20} />
               </button>
             </div>
           </div>
 
-          <div className="universal-filter-chips" style={{ display: 'flex', gap: '8px', padding: '12px 16px', overflowX: 'auto' }}>
-            <span className="filter-chip active" style={{ background: '#333', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Playlists</span>
-            <span className="filter-chip" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Podcasts</span>
-            <span className="filter-chip" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '16px', padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>Artists</span>
+          <div className="universal-filter-chips" style={{ display: 'flex', gap: '8px', padding: '6px 16px 12px 16px', overflowX: 'auto' }}>
+            <span className="filter-chip active" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Playlists</span>
+            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Podcasts</span>
+            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Albums</span>
+            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Artists</span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#b3b3b3', fontSize: '0.85rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              {searchOpen ? (
-                <input
-                  type="text"
-                  placeholder="Search in playlists"
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                  style={{
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    color: 'white',
-                    borderRadius: '4px',
-                    padding: '6px 10px',
-                    fontSize: '0.8rem',
-                    width: '100%',
-                    outline: 'none',
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', color: '#b3b3b3', cursor: 'pointer', padding: '4px' }}>
-                  <FaSearch size={16} />
-                </button>
-              )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#fff', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.9rem' }}>↑↓</span>
+              <span>Recents</span>
             </div>
-            {!searchOpen && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
-                  Recents
-                </span>
-                <span style={{ cursor: 'pointer' }}>
-                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zm2.25.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 7a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 11.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75z" />
-                  </svg>
-                </span>
-              </div>
-            )}
+            <div style={{ cursor: 'pointer', color: '#b3b3b3' }}>
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zm2.25.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 7a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 11.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75z" />
+              </svg>
+            </div>
           </div>
 
           <div className="library-playlists-list hide-scrollbar">
