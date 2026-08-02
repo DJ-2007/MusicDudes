@@ -510,15 +510,22 @@ export default function App() {
   };
 
   const emitIfReady = (event, payload) => {
-    if (!roomRef.current || !socketRef.current) return;
-    socketRef.current.emit(event, { roomId: roomRef.current, ...payload });
+    const socket = socketRef.current || getSocket();
+    socketRef.current = socket;
+    if (!socket.connected) {
+      socket.connect();
+    }
+    const currentRoom = roomRef.current || state.roomId || 'main';
+    roomRef.current = currentRoom;
+    socket.emit('join-room', { roomId: currentRoom, username: username || 'Guest' });
+    socket.emit(event, { roomId: currentRoom, ...payload });
   };
 
   const handleTogglePlay = () => {
     if (!state.currentSong) return;
     
     let currentAudioTime = state.currentTime;
-    if (ytPlayerRef.current && ytReadyRef.current) {
+    if (ytPlayerRef.current && (ytReadyRef.current || isYtReady)) {
       try {
         const ytTime = ytPlayerRef.current.getCurrentTime?.();
         if (typeof ytTime === 'number') {
@@ -528,24 +535,38 @@ export default function App() {
     }
 
     if (!state.isPlaying) {
+      setState(prev => ({ ...prev, isPlaying: true }));
       requestAudioPlayback();
     } else {
+      setState(prev => ({ ...prev, isPlaying: false }));
       try { ytPlayerRef.current?.pauseVideo?.(); } catch {}
     }
-    
+
     emitIfReady('toggle-play', { isPlaying: !state.isPlaying, currentTime: currentAudioTime });
   };
 
-  const handleNext = () => emitIfReady('next-song', {});
-  const handlePrevious = () => emitIfReady('previous-song', {});
-  const handleToggleShuffle = () => emitIfReady('toggle-shuffle', {});
-  const handleToggleRepeat = () => emitIfReady('toggle-repeat', {});
+  const handleNext = () => {
+    if (state.queue && state.queue.length > 0) {
+      const nextSong = state.queue[0];
+      setState(prev => ({
+        ...prev,
+        currentSong: nextSong,
+        isPlaying: true,
+        currentTime: 0,
+        queue: prev.queue.slice(1)
+      }));
+    }
+    emitIfReady('next-song');
+  };
+
+  const handlePrevious = () => {
+    emitIfReady('previous-song');
+  };
 
   const handleSeek = (time) => {
-    if (!state.currentSong) return;
     setState((current) => ({ ...current, currentTime: time }));
-    emitIfReady('sync-time', { currentTime: time });
-    if (ytPlayerRef.current && ytReadyRef.current) {
+    emitIfReady('seek-song', { currentTime: time });
+    if (ytPlayerRef.current && (ytReadyRef.current || isYtReady)) {
       try { ytPlayerRef.current.seekTo(time, true); } catch {}
     }
     if (audioRef.current) audioRef.current.currentTime = time;
@@ -559,7 +580,30 @@ export default function App() {
     if (playNow) {
       requestAudioPlayback();
     }
+
     if (typeof input === 'object' && input.videoId) {
+      const songToPlay = {
+        id: `${input.videoId}-${Date.now()}`,
+        videoId: input.videoId,
+        title: input.title,
+        artist: input.artist || 'Unknown Artist',
+        duration: Number(input.duration) || 240,
+        thumbnail: input.thumbnail,
+        requestedBy: username || 'Guest',
+      };
+
+      if (playNow) {
+        currentVideoIdRef.current = input.videoId;
+        currentSongIdRef.current = songToPlay.id;
+        setState(prev => ({
+          ...prev,
+          currentSong: songToPlay,
+          isPlaying: true,
+          currentTime: 0,
+          queue: []
+        }));
+      }
+
       emitIfReady('add-song', { song: input, username, playlistName, playNow });
       const msg = playlistName && playlistName !== '__queue_only__'
         ? `"${input.title}" added & saved to "${playlistName}"! 🎶`
@@ -567,6 +611,7 @@ export default function App() {
       if (playlistName && playlistName !== '__queue_only__') setToast(msg);
       return;
     }
+
     const isYouTubeLink = /youtu(?:\.be|be\.com)/i.test(input) || /^[A-Za-z0-9_-]{11}$/.test(input);
     const isDirectUrl = (() => { try { const p = new URL(input); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; } })();
     if (!isYouTubeLink && !isDirectUrl) { setToast('Enter a valid YouTube link, video ID, or direct audio URL.'); return; }
@@ -600,12 +645,11 @@ export default function App() {
       title: 'Remove Song', message: 'Are you sure?', confirmText: 'Remove', type: 'warning',
       onConfirm: () => {
         setState((current) => {
-          const newPlaylist = current.playlist.filter((s) => s.id !== songId);
           const newQueue = current.queue.filter((s) => s.id !== songId);
-          const isCurrent = current.currentSong?.id === songId;
-          const shouldStop = isCurrent || (newPlaylist.length === 0 && newQueue.length === 0);
+          const shouldStop = current.currentSong?.id === songId;
           return {
-            ...current, playlist: newPlaylist, queue: newQueue,
+            ...current,
+            queue: newQueue,
             currentSong: shouldStop ? (newQueue[0] || null) : current.currentSong,
             isPlaying: shouldStop ? Boolean(newQueue[0]) : current.isPlaying,
             currentTime: shouldStop ? 0 : current.currentTime,
@@ -618,10 +662,32 @@ export default function App() {
   };
 
   const handlePlayFromPlaylist = (song) => {
+    if (song) {
+      if (song.videoId) currentVideoIdRef.current = song.videoId;
+      if (song.id) currentSongIdRef.current = song.id;
+      setState(prev => ({
+        ...prev,
+        currentSong: song,
+        isPlaying: true,
+        currentTime: 0,
+      }));
+    }
+    requestAudioPlayback();
     emitIfReady('play-from-playlist', { songId: song.id, playNow: true });
   };
 
   const handlePlayFromQueue = (song) => {
+    if (song) {
+      if (song.videoId) currentVideoIdRef.current = song.videoId;
+      if (song.id) currentSongIdRef.current = song.id;
+      setState(prev => ({
+        ...prev,
+        currentSong: song,
+        isPlaying: true,
+        currentTime: 0,
+      }));
+    }
+    requestAudioPlayback();
     emitIfReady('play-from-queue', { songId: song.id });
   };
 
