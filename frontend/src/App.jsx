@@ -599,6 +599,9 @@ export default function App() {
   };
 
   const handleNext = () => {
+    // Reset video ref so the player useEffect detects a new video and loads it
+    currentVideoIdRef.current = null;
+    currentSongIdRef.current = null;
     if (state.queue && state.queue.length > 0) {
       const nextSong = state.queue[0];
       setState(prev => ({
@@ -613,6 +616,8 @@ export default function App() {
   };
 
   const handlePrevious = () => {
+    currentVideoIdRef.current = null;
+    currentSongIdRef.current = null;
     emitIfReady('previous-song');
   };
 
@@ -628,11 +633,16 @@ export default function App() {
 
   const handleSeek = (time) => {
     setState((current) => ({ ...current, currentTime: time }));
-    emitIfReady('seek-song', { currentTime: time });
+    // Seek YouTube player
     if (ytPlayerRef.current && (ytReadyRef.current || isYtReady)) {
       try { ytPlayerRef.current.seekTo(time, true); } catch {}
     }
-    if (audioRef.current) audioRef.current.currentTime = time;
+    // Seek HTML5 audio player
+    if (audioRef.current) {
+      try { audioRef.current.currentTime = time; } catch {}
+    }
+    // Sync to server (backend handles 'sync-time', not 'seek-song')
+    emitIfReady('sync-time', { currentTime: time });
   };
 
   const handleEnableAudio = () => requestAudioPlayback();
