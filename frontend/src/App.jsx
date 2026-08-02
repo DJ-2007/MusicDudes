@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import LandingPage from './components/LandingPage';
+import EmailAuthPage from './components/EmailAuthPage';
+import RoomModal from './components/RoomModal';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Playlist from './components/Playlist';
@@ -37,12 +39,22 @@ function getSocket() {
 }
 
 export default function App() {
+  const [userSession, setUserSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicdudes_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [connected, setConnected] = useState(false);
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [state, setState] = useState(defaultState);
-  const [username, setUsername] = useState('John');
+  const [username, setUsername] = useState(() => userSession?.username || 'Guest');
+  const [showRoomModal, setShowRoomModal] = useState(false);
   const [volume, setVolume] = useState(0.72);
   const [showQueue, setShowQueue] = useState(true);
   const [toast, setToast] = useState('');
@@ -372,14 +384,72 @@ export default function App() {
     return () => clearInterval(interval);
   }, [joined]);
 
+  // Auto-start / Auto-join for logged in user session
+  useEffect(() => {
+    if (userSession && userSession.username && !joined) {
+      const targetRoom = userSession.lastRoom || 'main';
+      const user = userSession.username;
+      setUsername(user);
+      setLoading(true);
+
+      fetch(`${API_URL}/room/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: targetRoom, password: '', username: user }),
+      })
+      .then(res => res.json())
+      .then(payload => {
+        if (payload.state) {
+          setState(payload.state);
+          setJoined(true);
+          setLoading(false);
+          roomRef.current = payload.roomId;
+          socketRef.current?.emit('join-room', { roomId: payload.roomId, username: user });
+          socketRef.current?.emit('get-room-state', { roomId: payload.roomId });
+        }
+      })
+      .catch(() => {
+        setJoined(true);
+        setLoading(false);
+        roomRef.current = targetRoom;
+        socketRef.current?.emit('join-room', { roomId: targetRoom, username: user });
+      });
+    }
+  }, [userSession]);
+
+  const handleEmailSignIn = ({ email, username: enteredUsername }) => {
+    const session = { email, username: enteredUsername, lastRoom: 'main' };
+    try { localStorage.setItem('musicdudes_user', JSON.stringify(session)); } catch {}
+    setUserSession(session);
+    setUsername(enteredUsername);
+  };
+
+  const handleCreateRoomFromModal = async ({ roomName, password }) => {
+    await handleCreate({ roomName, password, username });
+    if (userSession) {
+      const updated = { ...userSession, lastRoom: roomName };
+      try { localStorage.setItem('musicdudes_user', JSON.stringify(updated)); } catch {}
+      setUserSession(updated);
+    }
+  };
+
+  const handleJoinRoomFromModal = async ({ roomName, password }) => {
+    await handleJoin({ roomName, password, username });
+    if (userSession) {
+      const updated = { ...userSession, lastRoom: roomName };
+      try { localStorage.setItem('musicdudes_user', JSON.stringify(updated)); } catch {}
+      setUserSession(updated);
+    }
+  };
+
   // --- Join / Create handlers ---
   const handleJoin = async ({ roomName, password, username: enteredUsername }) => {
-    if (!roomName || !password || !enteredUsername) { setError('Room name, password, and username are all required.'); return; }
+    if (!roomName || !enteredUsername) { setError('Room name and username are required.'); return; }
     setError(''); setLoading(true); setUsername(enteredUsername);
     try {
       const response = await fetch(`${API_URL}/room/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName, password, username: enteredUsername }),
+        body: JSON.stringify({ roomName, password: password || '', username: enteredUsername }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to join room');
@@ -394,12 +464,12 @@ export default function App() {
   };
 
   const handleCreate = async ({ roomName, password, username: enteredUsername }) => {
-    if (!roomName || !password || !enteredUsername) { setError('Room name, password, and username are all required.'); return; }
+    if (!roomName || !enteredUsername) { setError('Room name and username are required.'); return; }
     setError(''); setLoading(true); setUsername(enteredUsername);
     try {
       const response = await fetch(`${API_URL}/room/create`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName, password, username: enteredUsername }),
+        body: JSON.stringify({ roomName, password: password || '', username: enteredUsername }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to create room');
@@ -407,7 +477,7 @@ export default function App() {
       roomRef.current = payload.roomId;
       socketRef.current?.emit('join-room', { roomId: payload.roomId, username: enteredUsername });
       socketRef.current?.emit('get-room-state', { roomId: payload.roomId });
-      setToast(`Room "${payload.roomId}" created! 🎉`);
+      setToast(`Room "${payload.roomId}" ready! 🎉`);
     } catch (createError) {
       setError(createError.message || 'Unable to create room.'); setLoading(false);
     }
@@ -609,12 +679,23 @@ export default function App() {
       <ConfirmDialog {...confirmConfig} />
       {toast ? <div className="toast toast-info">{toast}</div> : null}
 
-      {!joined ? (
-        <div className="app-shell">
-          <LandingPage onJoin={handleJoin} onCreate={handleCreate} loading={loading} error={error} />
+      {!userSession ? (
+        <EmailAuthPage onSignIn={handleEmailSignIn} loading={loading} error={error} />
+      ) : !joined ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#121212', color: '#1db954', fontSize: '1.1rem', fontWeight: 600, gap: '12px' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid #1db954', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          Loading MusicDudes...
         </div>
       ) : (
         <div className={`spotify-app-layout mobile-active-${activeMobileTab}`}>
+          <RoomModal
+            isOpen={showRoomModal}
+            onClose={() => setShowRoomModal(false)}
+            onCreateRoom={handleCreateRoomFromModal}
+            onJoinRoom={handleJoinRoomFromModal}
+            currentRoomId={state.roomId}
+          />
+
           {/* Global Top Bar with Search */}
           <TopBar
             roomId={state.roomId}
@@ -625,6 +706,7 @@ export default function App() {
             playlists={state.playlists}
             onHomeClick={scrollToTop}
             username={username}
+            onRequestCreateRoom={() => setShowRoomModal(true)}
           />
 
           {/* Three-column content grid */}

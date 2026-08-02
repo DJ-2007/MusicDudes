@@ -38,6 +38,7 @@ export default function TopBar({
   playlists = [],
   onHomeClick,
   username,
+  onRequestCreateRoom,
 }) {
   const [searchValue, setSearchValue] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -349,8 +350,32 @@ export default function TopBar({
         )}
       </div>
 
-      {/* Right: Room info */}
+      {/* Right: Room info & Actions */}
       <div className="topbar-right">
+        {onRequestCreateRoom && (
+          <button
+            className="topbar-create-room-btn"
+            onClick={onRequestCreateRoom}
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              border: 'none',
+              color: '#fff',
+              borderRadius: '20px',
+              padding: '6px 12px',
+              fontSize: '0.78rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginRight: '8px',
+              transition: 'background 0.2s ease',
+            }}
+            title="Create or Join a Room"
+          >
+            <FaPlus size={10} /> Create Room
+          </button>
+        )}
         <div className="room-name-badge">
           <span className="room-status-indicator online"></span>
           {roomId || 'Room'}
