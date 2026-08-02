@@ -405,8 +405,12 @@ export default function App() {
 
         // 3. Resilient Timer Fallback (Always advance progress when playing)
         const duration = Number(current.currentSong.duration) || 240;
-        const nextTime = Math.min(duration, (current.currentTime || 0) + 0.9);
-        return { ...current, currentTime: nextTime };
+        const rawTime = (current.currentTime || 0) + 0.9;
+        if (rawTime >= duration && duration > 0) {
+          setTimeout(() => handleNext(), 0);
+          return { ...current, isPlaying: false, currentTime: 0 };
+        }
+        return { ...current, currentTime: rawTime };
       });
     }, 900);
     return () => {
@@ -808,7 +812,7 @@ export default function App() {
 
   return (
     <>
-      <audio ref={audioRef} preload="auto" style={{ display: 'none' }} />
+      <audio ref={audioRef} preload="auto" onEnded={() => handleNext()} style={{ display: 'none' }} />
       <div 
         id="yt-player-hidden" 
         style={{ 
