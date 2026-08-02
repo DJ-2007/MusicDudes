@@ -275,35 +275,40 @@ export default function App() {
     const videoId = state.currentSong.videoId;
     const videoChanged = currentVideoIdRef.current !== videoId;
 
-    if (videoChanged) {
-      currentVideoIdRef.current = videoId;
-      currentSongIdRef.current = songId;
-      if (videoId) {
-        // Engine 1: YouTube IFrame Player
-        if (player && typeof player.loadVideoById === 'function') {
-          try {
-            if (typeof player.unMute === 'function') player.unMute();
-            if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
-            player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
-            if (typeof player.playVideo === 'function') player.playVideo();
-          } catch (err) {
-            console.error('Error loading YouTube video by ID:', err);
-          }
-        }
+    if (videoChanged && videoId) {
+      let loaded = false;
 
-        // Engine 2: HTML5 Proxy Stream Fallback
-        if (audioRef.current) {
-          try {
-            audioRef.current.src = `${API_URL}/audio/${videoId}`;
-            audioRef.current.volume = volume;
-            if (state.currentTime) audioRef.current.currentTime = state.currentTime;
-            if (state.isPlaying) {
-              audioRef.current.play().catch(() => {});
-            }
-          } catch (e) {
-            console.error('HTML5 audio error:', e);
-          }
+      // Engine 1: YouTube IFrame Player
+      if (player && (ytReadyRef.current || isYtReady) && typeof player.loadVideoById === 'function') {
+        try {
+          if (typeof player.unMute === 'function') player.unMute();
+          if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+          player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
+          if (typeof player.playVideo === 'function') player.playVideo();
+          loaded = true;
+        } catch (err) {
+          console.error('Error loading YouTube video by ID:', err);
         }
+      }
+
+      // Engine 2: HTML5 Proxy Stream Fallback
+      if (audioRef.current) {
+        try {
+          audioRef.current.src = `${API_URL}/audio/${videoId}`;
+          audioRef.current.volume = volume;
+          if (state.currentTime) audioRef.current.currentTime = state.currentTime;
+          if (state.isPlaying) {
+            audioRef.current.play().catch(() => {});
+          }
+          loaded = true;
+        } catch (e) {
+          console.error('HTML5 audio error:', e);
+        }
+      }
+
+      if (loaded) {
+        currentVideoIdRef.current = videoId;
+        currentSongIdRef.current = songId;
       }
     }
 
@@ -647,8 +652,6 @@ export default function App() {
       };
 
       if (playNow) {
-        currentVideoIdRef.current = input.videoId;
-        currentSongIdRef.current = songToPlay.id;
         setState(prev => ({
           ...prev,
           currentSong: songToPlay,
@@ -717,8 +720,6 @@ export default function App() {
 
   const handlePlayFromPlaylist = (song) => {
     if (song) {
-      if (song.videoId) currentVideoIdRef.current = song.videoId;
-      if (song.id) currentSongIdRef.current = song.id;
       setState(prev => ({
         ...prev,
         currentSong: song,
@@ -732,8 +733,6 @@ export default function App() {
 
   const handlePlayFromQueue = (song) => {
     if (song) {
-      if (song.videoId) currentVideoIdRef.current = song.videoId;
-      if (song.id) currentSongIdRef.current = song.id;
       setState(prev => ({
         ...prev,
         currentSong: song,
