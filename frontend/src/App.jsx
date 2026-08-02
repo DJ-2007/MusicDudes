@@ -96,63 +96,74 @@ export default function App() {
 
   // Initialize YouTube IFrame Player
   useEffect(() => {
-    // Inject YouTube IFrame API
-    if (window.YT && window.YT.Player) {
-      ytReadyRef.current = true;
-      return;
-    }
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    const initPlayer = () => {
+      if (!window.YT || !window.YT.Player) return;
+      const container = document.getElementById('yt-player-hidden');
+      if (!container) return;
+      if (ytPlayerRef.current) return;
 
-    window.onYouTubeIframeAPIReady = () => {
-      ytReadyRef.current = true;
-      const initPlayer = () => {
-        ytPlayerRef.current = new window.YT.Player('yt-player-hidden', {
-          height: '1',
-          width: '1',
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            rel: 0,
-            playsinline: 1,
-            origin: window.location.origin,
+      ytPlayerRef.current = new window.YT.Player('yt-player-hidden', {
+        height: '1',
+        width: '1',
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          rel: 0,
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (event) => {
+            ytReadyRef.current = true;
+            try {
+              event.target.unMute();
+              event.target.setVolume(volume * 100);
+            } catch {}
           },
-          events: {
-            onReady: () => {
-              ytReadyRef.current = true;
-            },
-            onStateChange: (event) => {
-              if (event.data === window.YT.PlayerState.ENDED) {
-                if (roomRef.current && socketRef.current) {
-                  socketRef.current.emit('next-song', { roomId: roomRef.current });
-                }
+          onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.ENDED) {
+              if (roomRef.current && socketRef.current) {
+                socketRef.current.emit('next-song', { roomId: roomRef.current });
               }
-              if (event.data === window.YT.PlayerState.PLAYING) {
-                audioUnlockedRef.current = true;
-                setAudioBlocked(false);
-              }
-            },
-            onError: (event) => {
-              console.error('YouTube player error:', event.data);
-              setToast('Audio playback error. Trying next song...');
-              setTimeout(() => {
-                if (roomRef.current && socketRef.current) {
-                  socketRef.current.emit('next-song', { roomId: roomRef.current });
-                }
-              }, 2000);
+            }
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              audioUnlockedRef.current = true;
+              setAudioBlocked(false);
             }
           },
-        });
-      };
-      initPlayer();
+          onError: (event) => {
+            console.error('YouTube player error:', event.data);
+            setToast('Audio playback error. Trying next song...');
+            setTimeout(() => {
+              if (roomRef.current && socketRef.current) {
+                socketRef.current.emit('next-song', { roomId: roomRef.current });
+              }
+            }, 1500);
+          }
+        },
+      });
     };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = () => {
+        initPlayer();
+      };
+    }
+
     return () => {
       if (ytPlayerRef.current && typeof ytPlayerRef.current.destroy === 'function') {
-        ytPlayerRef.current.destroy();
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
       }
     };
   }, []);
@@ -161,10 +172,9 @@ export default function App() {
     const player = ytPlayerRef.current;
     if (!player || !ytReadyRef.current || !state.currentSong) return;
     try {
-      if (typeof player.playVideo === 'function') {
-        player.playVideo();
-      }
-      player.setVolume(volume * 100);
+      if (typeof player.unMute === 'function') player.unMute();
+      if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+      if (typeof player.playVideo === 'function') player.playVideo();
       audioUnlockedRef.current = true;
       setAudioBlocked(false);
     } catch {
@@ -250,18 +260,28 @@ export default function App() {
       currentVideoIdRef.current = videoId;
       currentSongIdRef.current = songId;
       if (videoId) {
-        player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
+        try {
+          if (typeof player.unMute === 'function') player.unMute();
+          if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+          player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
+          if (typeof player.playVideo === 'function') player.playVideo();
+        } catch (err) {
+          console.error('Error loading video by ID:', err);
+        }
       }
     }
 
-    player.setVolume(volume * 100);
+    try {
+      if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
+    } catch {}
 
     if (state.isPlaying) {
       try {
         const playerState = player.getPlayerState?.();
         // YT.PlayerState.PLAYING = 1, BUFFERING = 3
         if (playerState !== 1 && playerState !== 3) {
-          player.playVideo();
+          if (typeof player.unMute === 'function') player.unMute();
+          if (typeof player.playVideo === 'function') player.playVideo();
         }
       } catch {
         audioUnlockedRef.current = false;
