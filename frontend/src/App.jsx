@@ -57,6 +57,7 @@ export default function App() {
   const audioUnlockedRef = useRef(false);
   const mainContentRef = useRef(null);
   const currentSongIdRef = useRef(null);
+  const currentVideoIdRef = useRef(null);
 
   const [activeMobileTab, setActiveMobileTab] = useState('home');
   const [showMobileNowPlaying, setShowMobileNowPlaying] = useState(false);
