@@ -878,8 +878,18 @@ textarea.spotify-input {
   user-select: none;
 }
 
-.tb-search-item:hover {
+.tb-search-item:hover,
+.tb-search-item.selected {
   background: #2a2a2a;
+}
+
+.tb-search-item.selected {
+  background: #333333 !important;
+  border-left: 3px solid #1db954;
+}
+
+.tb-search-item.selected .tb-search-actions {
+  opacity: 1 !important;
 }
 
 .tb-search-thumb {

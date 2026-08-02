@@ -47,10 +47,15 @@ export default function TopBar({
   const [searchHistory, setSearchHistory] = useState(() => loadHistory(roomId));
   const [showHistory, setShowHistory] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   useEffect(() => {
     setSearchHistory(loadHistory(roomId));
   }, [roomId]);
+
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [searchResults, showHistory, searchValue]);
   const [playlistPopover, setPlaylistPopover] = useState({ open: false, track: null });
   const searchTimeoutRef = useRef(null);
   const searchContainerRef = useRef(null);
@@ -178,14 +183,53 @@ export default function TopBar({
     setPlaylistPopover({ open: false, track: null });
   };
 
+  const getActiveItems = () => {
+    if (searchResults.length > 0) return searchResults;
+    if (showHistory && searchHistory.length > 0) return searchHistory;
+    return [];
+  };
+
+  const handleInputKeyDown = (e) => {
+    const activeItems = getActiveItems();
+    if (activeItems.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev < activeItems.length - 1 ? prev + 1 : 0));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev > 0 ? prev - 1 : activeItems.length - 1));
+        return;
+      }
+      if (e.key === 'Enter' && selectedIndex >= 0 && selectedIndex < activeItems.length) {
+        e.preventDefault();
+        handlePlayTrack(activeItems[selectedIndex]);
+        return;
+      }
+    }
+    if (e.key === 'Escape') {
+      setSearchResults([]);
+      setShowHistory(false);
+      setSelectedIndex(-1);
+      searchInputRef.current?.blur();
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const activeItems = getActiveItems();
+    if (selectedIndex >= 0 && selectedIndex < activeItems.length) {
+      handlePlayTrack(activeItems[selectedIndex]);
+      return;
+    }
     if (!searchValue.trim()) return;
     onAddSong(searchValue.trim(), '__queue_only__');
     setSearchValue('');
     setSearchResults([]);
     setShowHistory(false);
     setIsSearchFocused(false);
+    setSelectedIndex(-1);
   };
 
   const handleInputFocus = () => {
@@ -210,12 +254,13 @@ export default function TopBar({
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
   };
 
-  const renderTrackRow = (track, isHistoryItem = false) => {
+  const renderTrackRow = (track, itemIndex, isHistoryItem = false) => {
     const liked = isSongLiked(track);
+    const isSelected = itemIndex === selectedIndex;
     return (
       <div
         key={track.videoId || `${track.title}-${track.artist}`}
-        className="tb-search-item"
+        className={`tb-search-item ${isSelected ? 'selected' : ''}`}
         onClick={() => handlePlayTrack(track)}
       >
         <img src={track.thumbnail} alt="" className="tb-search-thumb" />
@@ -288,6 +333,7 @@ export default function TopBar({
               value={searchValue}
               onChange={handleInputChange}
               onFocus={handleInputFocus}
+              onKeyDown={handleInputKeyDown}
               placeholder="What do you want to play?"
               spellCheck={false}
             />
@@ -299,6 +345,7 @@ export default function TopBar({
                   setSearchValue('');
                   setSearchResults([]);
                   setShowHistory(false);
+                  setSelectedIndex(-1);
                   searchInputRef.current?.focus();
                 }}
                 title="Clear search"
@@ -327,7 +374,7 @@ export default function TopBar({
                   <span><FaHistory size={12} style={{ marginRight: '8px', opacity: 0.7 }} />Recent searches</span>
                   <button className="tb-clear-btn" onClick={clearHistory} type="button">Clear all</button>
                 </div>
-                {searchHistory.map(track => renderTrackRow(track, true))}
+                {searchHistory.map((track, idx) => renderTrackRow(track, idx, true))}
               </>
             )}
             {searchResults.length > 0 && (
@@ -335,7 +382,7 @@ export default function TopBar({
                 <div className="tb-dropdown-header">
                   <span>Search results</span>
                 </div>
-                {searchResults.map(track => renderTrackRow(track, false))}
+                {searchResults.map((track, idx) => renderTrackRow(track, idx, false))}
               </>
             )}
           </div>
