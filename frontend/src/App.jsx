@@ -374,28 +374,40 @@ export default function App() {
       const player = ytPlayerRef.current;
       setState((current) => {
         if (!current.isPlaying || !current.currentSong) return current;
-        
-        // Use actual YouTube player time if available
-        if (player && ytReadyRef.current) {
+
+        // 1. YouTube IFrame Player Time
+        if (player && (ytReadyRef.current || isYtReady)) {
           try {
             const playerState = player.getPlayerState?.();
-            // Only advance if YT player is actually playing (state 1) or buffering (state 3)
-            if (playerState !== 1 && playerState !== 3) return current;
-            const ytTime = player.getCurrentTime?.();
-            if (typeof ytTime === 'number') {
-              return { ...current, currentTime: ytTime };
+            if (playerState === 1 || playerState === 3) {
+              const ytTime = player.getCurrentTime?.();
+              if (typeof ytTime === 'number' && ytTime > 0) {
+                return { ...current, currentTime: ytTime };
+              }
             }
           } catch {}
         }
 
-        const nextTime = Math.min(current.currentSong.duration, current.currentTime + 0.9);
+        // 2. HTML5 Audio Player Time
+        if (audioRef.current && !audioRef.current.paused) {
+          try {
+            const audioTime = audioRef.current.currentTime;
+            if (typeof audioTime === 'number' && audioTime > 0) {
+              return { ...current, currentTime: audioTime };
+            }
+          } catch {}
+        }
+
+        // 3. Resilient Timer Fallback (Always advance progress when playing)
+        const duration = Number(current.currentSong.duration) || 240;
+        const nextTime = Math.min(duration, (current.currentTime || 0) + 0.9);
         return { ...current, currentTime: nextTime };
       });
     }, 900);
     return () => {
       if (progressTickRef.current) window.clearInterval(progressTickRef.current);
     };
-  }, [state.currentSong]);
+  }, [state.currentSong?.id, state.currentSong?.videoId, isYtReady]);
 
   useEffect(() => {
     const onKey = (event) => {
