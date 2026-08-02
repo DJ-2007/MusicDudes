@@ -293,7 +293,7 @@ export default function AddSong({
           {/* Play button */}
           <button
             className="sr-action-btn sr-play-btn"
-            onClick={() => handlePlayTrack(track)}
+            onClick={(e) => { e.stopPropagation(); handlePlayTrack(track); }}
             title="Play now"
           >
             <FaPlay size={10} />

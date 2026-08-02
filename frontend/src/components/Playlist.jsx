@@ -272,7 +272,10 @@ function SongRow({
     return `${minutes}:${seconds}`;
   };
 
-  const handleRowClick = () => {
+  const handleRowClick = (e) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     if (isCurrentlyActive && onTogglePlay) {
       onTogglePlay();
     } else if (onSelect) {
@@ -283,7 +286,7 @@ function SongRow({
   return (
     <div 
       className={`track-row ${isPlayingSong ? 'active-song' : ''}`}
-      onClick={handleRowClick}
+      onClick={(e) => handleRowClick(e)}
       style={{ cursor: 'pointer' }}
     >
       {/* Index Column / Play Button Hover state */}
@@ -291,7 +294,7 @@ function SongRow({
         <span className="row-number-text">{index}</span>
         <button 
           className="row-play-btn" 
-          onClick={handleRowClick}
+          onClick={(e) => handleRowClick(e)}
           aria-label="Play song"
         >
           {isPlayingSong && isPlaying ? <FaPause size={10} /> : <FaPlay size={10} style={{ marginLeft: '1px' }} />}
