@@ -215,7 +215,11 @@ export default function App() {
     };
     const handleRoomState = (roomState) => {
       const player = ytPlayerRef.current;
-      if (player && (ytReadyRef.current || isYtReady) && roomState.currentSong && roomState.isPlaying) {
+      const currentVideoId = currentVideoIdRef.current;
+      const incomingVideoId = roomState.currentSong?.videoId;
+
+      // Only seek YouTube player if we are already playing the SAME video
+      if (player && (ytReadyRef.current || isYtReady) && roomState.currentSong && roomState.isPlaying && currentVideoId && currentVideoId === incomingVideoId) {
         try {
           const ytTime = player.getCurrentTime?.();
           if (typeof ytTime === 'number') {
@@ -277,13 +281,16 @@ export default function App() {
 
     if (videoChanged && videoId) {
       let loaded = false;
+      // Start a brand-new track at 0 seconds, unless restoring session on initial page load
+      const isInitialRestore = currentVideoIdRef.current === null && (state.currentTime || 0) > 2;
+      const startSec = isInitialRestore ? (state.currentTime || 0) : 0;
 
       // Engine 1: YouTube IFrame Player
       if (player && (ytReadyRef.current || isYtReady) && typeof player.loadVideoById === 'function') {
         try {
           if (typeof player.unMute === 'function') player.unMute();
           if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
-          player.loadVideoById({ videoId, startSeconds: state.currentTime || 0 });
+          player.loadVideoById({ videoId, startSeconds: startSec });
           if (typeof player.playVideo === 'function') player.playVideo();
           loaded = true;
         } catch (err) {
@@ -296,7 +303,7 @@ export default function App() {
         try {
           audioRef.current.src = `${API_URL}/audio/${videoId}`;
           audioRef.current.volume = volume;
-          if (state.currentTime) audioRef.current.currentTime = state.currentTime;
+          audioRef.current.currentTime = startSec;
           if (state.isPlaying) {
             audioRef.current.play().catch(() => {});
           }
@@ -775,6 +782,8 @@ export default function App() {
   };
 
   const handlePlayFromPlaylist = (song) => {
+    currentVideoIdRef.current = null;
+    currentSongIdRef.current = null;
     if (song) {
       setState(prev => ({
         ...prev,
@@ -788,6 +797,8 @@ export default function App() {
   };
 
   const handlePlayFromQueue = (song) => {
+    currentVideoIdRef.current = null;
+    currentSongIdRef.current = null;
     if (song) {
       setState(prev => ({
         ...prev,
