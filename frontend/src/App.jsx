@@ -384,14 +384,25 @@ export default function App() {
     return () => clearInterval(interval);
   }, [joined]);
 
-  // Auto-start / Auto-join for logged in user session
+  // Auto-start / Auto-join for logged in user session (INSTANT 0-DELAY)
   useEffect(() => {
     if (userSession && userSession.username && !joined) {
       const targetRoom = userSession.lastRoom || 'main';
       const user = userSession.username;
       setUsername(user);
-      setLoading(true);
+      roomRef.current = targetRoom;
+      setJoined(true);
+      setLoading(false);
 
+      const socket = getSocket();
+      socketRef.current = socket;
+      if (!socket.connected) {
+        socket.connect();
+      }
+      socket.emit('join-room', { roomId: targetRoom, username: user });
+      socket.emit('get-room-state', { roomId: targetRoom });
+
+      // Background HTTP sync (non-blocking)
       fetch(`${API_URL}/room/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -401,27 +412,27 @@ export default function App() {
       .then(payload => {
         if (payload.state) {
           setState(payload.state);
-          setJoined(true);
-          setLoading(false);
-          roomRef.current = payload.roomId;
-          socketRef.current?.emit('join-room', { roomId: payload.roomId, username: user });
-          socketRef.current?.emit('get-room-state', { roomId: payload.roomId });
         }
       })
-      .catch(() => {
-        setJoined(true);
-        setLoading(false);
-        roomRef.current = targetRoom;
-        socketRef.current?.emit('join-room', { roomId: targetRoom, username: user });
-      });
+      .catch(() => {});
     }
-  }, [userSession]);
+  }, [userSession, joined]);
 
   const handleEmailSignIn = ({ email, username: enteredUsername }) => {
     const session = { email, username: enteredUsername, lastRoom: 'main' };
     try { localStorage.setItem('musicdudes_user', JSON.stringify(session)); } catch {}
-    setUserSession(session);
     setUsername(enteredUsername);
+    roomRef.current = 'main';
+    setJoined(true);
+    setUserSession(session);
+
+    const socket = getSocket();
+    socketRef.current = socket;
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.emit('join-room', { roomId: 'main', username: enteredUsername });
+    socket.emit('get-room-state', { roomId: 'main' });
   };
 
   const handleCreateRoomFromModal = async ({ roomName, password }) => {
