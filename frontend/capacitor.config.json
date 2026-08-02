@@ -1,5 +1,13 @@
 {
   "appId": "com.musicdudes.app",
   "appName": "MusicDudes",
-  "webDir": "dist"
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "backgroundColor": "#121212"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
 }
