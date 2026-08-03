@@ -48,15 +48,6 @@ export default function NowPlayingPanel({
       {/* Header */}
       <div className="npp-header">
         <span className="npp-header-title">{song.title}</span>
-        <div className="npp-header-actions">
-          <button
-            className="npp-icon-btn"
-            onClick={() => setShowMenu(!showMenu)}
-            title="More options"
-          >
-            <FaEllipsisH size={14} />
-          </button>
-        </div>
       </div>
 
       {/* Large Album Art */}

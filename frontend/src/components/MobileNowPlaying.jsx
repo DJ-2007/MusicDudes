@@ -64,9 +64,7 @@ export default function MobileNowPlaying({
           <FaChevronDown size={20} />
         </button>
         <span className="mnp-header-title">Now Playing</span>
-        <button className="mnp-icon-btn">
-          <FaEllipsisV size={20} />
-        </button>
+        <div style={{ width: '20px' }} />
       </div>
 
       <div className="mnp-artwork-container">
