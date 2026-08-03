@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  FaChevronDown, 
-  FaPlay, 
-  FaPause, 
-  FaStepBackward, 
-  FaStepForward, 
-  FaRandom, 
-  FaRedo, 
-  FaHeart, 
+import {
+  FaChevronDown,
+  FaPlay,
+  FaPause,
+  FaStepBackward,
+  FaStepForward,
+  FaRandom,
+  FaRedo,
+  FaHeart,
   FaRegHeart,
   FaEllipsisV
 } from 'react-icons/fa';
@@ -53,18 +53,19 @@ export default function MobileNowPlaying({
   };
 
   return (
-    <div 
+    <div
       className="mobile-now-playing-full fade-in"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
     >
-      <div className="mnp-drag-pill" />
       <div className="mnp-header">
         <button className="mnp-icon-btn" onClick={onClose}>
           <FaChevronDown size={20} />
         </button>
         <span className="mnp-header-title">Now Playing</span>
-        <div style={{ width: '20px' }} />
+        <button className="mnp-icon-btn">
+          <FaEllipsisV size={20} />
+        </button>
       </div>
 
       <div className="mnp-artwork-container">
@@ -79,7 +80,7 @@ export default function MobileNowPlaying({
           </div>
           <div className="mnp-actions">
             <button className={`mnp-action-btn ${isLiked ? 'liked' : ''}`} onClick={() => onToggleLike && onToggleLike(song)}>
-              {isLiked ? <FaHeart size={24} style={{color: '#1db954'}} /> : <FaRegHeart size={24} />}
+              {isLiked ? <FaHeart size={24} style={{ color: '#1db954' }} /> : <FaRegHeart size={24} />}
             </button>
           </div>
         </div>
@@ -96,7 +97,7 @@ export default function MobileNowPlaying({
             <FaStepBackward size={36} />
           </button>
           <button className="mnp-play-btn" onClick={onTogglePlay}>
-            {isPlaying ? <FaPause size={28} /> : <FaPlay size={28} style={{marginLeft: '4px'}} />}
+            {isPlaying ? <FaPause size={28} /> : <FaPlay size={28} style={{ marginLeft: '4px' }} />}
           </button>
           <button className="mnp-control-btn" onClick={onNext}>
             <FaStepForward size={36} />

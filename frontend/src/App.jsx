@@ -532,6 +532,47 @@ export default function App() {
     };
   }, []);
 
+  // System MediaSession integration for lock screen controls and background playback
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !state.currentSong) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: state.currentSong.title || 'Unknown Title',
+        artist: state.currentSong.artist || 'MusicDudes',
+        album: 'MusicDudes',
+        artwork: state.currentSong.thumbnail ? [
+          { src: state.currentSong.thumbnail, sizes: '96x96', type: 'image/jpeg' },
+          { src: state.currentSong.thumbnail, sizes: '128x128', type: 'image/jpeg' },
+          { src: state.currentSong.thumbnail, sizes: '192x192', type: 'image/jpeg' },
+          { src: state.currentSong.thumbnail, sizes: '512x512', type: 'image/jpeg' },
+        ] : []
+      });
+
+      navigator.mediaSession.playbackState = state.isPlaying ? 'playing' : 'paused';
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (!stateRef.current.isPlaying) handleTogglePlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (stateRef.current.isPlaying) handleTogglePlay();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        handlePrevious();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        handleNext();
+      });
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number') {
+          handleSeek(details.seekTime);
+        }
+      });
+    } catch (e) {
+      console.error('MediaSession setup failed:', e);
+    }
+  }, [state.currentSong?.id, state.currentSong?.videoId, state.currentSong?.title, state.isPlaying]);
+
   // Auto-start / Auto-join for logged in user session (INSTANT 0-DELAY)
   useEffect(() => {
     if (userSession && userSession.username && !joined) {
