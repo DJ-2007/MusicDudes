@@ -102,8 +102,8 @@ async function prefillQueue(roomId, seedSong) {
     }
     
     if (addedCount > 0) {
-      // Re-fetch room from cache to ensure we preserve the latest live playback state (currentTime / lastUpdatedAt)
-      let latestRoom = (await getRoomFromDB(roomId)) || room;
+      // Re-fetch room from memory cache to preserve the latest live currentSong playback state
+      let latestRoom = roomCache.get(roomId) || room;
       latestRoom.queue = room.queue;
       latestRoom._cachedAt = Date.now();
       roomCache.set(roomId, latestRoom);
@@ -204,12 +204,9 @@ function normalizeCandidate(c) {
 
 async function getRoomFromDB(roomId) {
   if (!roomId) return null;
-  // Check cache first
+  // Check cache first - always return live in-memory room state if available
   if (roomCache.has(roomId)) {
-    const cached = roomCache.get(roomId);
-    if (Date.now() - cached._cachedAt < 5000) {
-      return cached;
-    }
+    return roomCache.get(roomId);
   }
 
   // Fetch fresh from Supabase

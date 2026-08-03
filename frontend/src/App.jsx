@@ -817,6 +817,9 @@ export default function App() {
       };
 
       if (playNow) {
+        currentVideoIdRef.current = null;
+        currentSongIdRef.current = null;
+        userPausedRef.current = 0;
         setState(prev => ({
           ...prev,
           currentSong: songToPlay,
