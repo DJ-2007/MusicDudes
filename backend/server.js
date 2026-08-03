@@ -311,6 +311,7 @@ function serializeRoom(room) {
     playlist: activePlaylist ? activePlaylist.songs : [],
     playlists: (room.playlists || []).map(p => ({
       name: p.name,
+      cover: p.cover || null,
       songs: p.songs || []
     })),
     activePlaylistName: room.activePlaylistName || 'Liked Songs',
@@ -1247,6 +1248,25 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error deleting playlist:', error);
       socket.emit('error', 'Failed to delete playlist');
+    }
+  });
+
+  // Update playlist cover photo
+  socket.on('update-playlist-cover', async ({ roomId, playlistName, cover }) => {
+    try {
+      if (!playlistName) return;
+      let room = await getRoomFromDB(roomId);
+      if (!room || !room.playlists) return;
+
+      const targetPlaylist = room.playlists.find(p => p.name === playlistName);
+      if (targetPlaylist) {
+        targetPlaylist.cover = cover;
+        room.lastUpdatedAt = new Date();
+        await saveRoomToDB(room);
+        io.to(roomId).emit('room-state', serializeRoom(room));
+      }
+    } catch (error) {
+      console.error('Error updating playlist cover:', error);
     }
   });
 

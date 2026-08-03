@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaHome, FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes, FaListUl, FaArrowRight } from 'react-icons/fa';
+import { FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes } from 'react-icons/fa';
 
 function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
   const [name, setName] = useState('');
@@ -53,7 +53,7 @@ function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Awesome Playlist"
+              placeholder="My Playlist"
               maxLength={50}
               autoComplete="off"
               spellCheck={false}
@@ -77,7 +77,6 @@ function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
 }
 
 export default function Sidebar({
-  onHomeClick,
   onLibraryClick,
   playlists = [],
   activePlaylistName = 'Liked Songs',
@@ -101,111 +100,107 @@ export default function Sidebar({
   return (
     <>
       <aside className="spotify-sidebar">
-        {/* Navigation Panel (Hidden on mobile) */}
-        <div className="sidebar-section-card nav-section">
-          <button
-            className={`sidebar-nav-button ${activePlaylistName === 'Home' ? 'active' : ''}`}
-            type="button"
-            onClick={onHomeClick}
-          >
-            <FaHome size={20} />
-            <span className="sidebar-button-label">Home</span>
-          </button>
-        </div>
-
-        {/* Library Panel */}
-        <div className="sidebar-section-card library-section">
-          <div className="library-header mobile-library-header" style={{ padding: '12px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="library-title-group" onClick={onLibraryClick} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className="mobile-avatar-circle" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1db954', color: '#000', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>
-                JD
-              </div>
-              <span className="library-label" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
+        {/* Clean Spotify Library Section */}
+        <div className="sidebar-section-card library-section" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="library-header mobile-library-header" style={{ padding: '16px 20px 12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="library-title-group" onClick={onLibraryClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <FaMusic size={22} color="#1db954" />
+              <span className="library-label" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
                 Your Library
               </span>
             </div>
-            <div className="library-header-actions" style={{ display: 'flex', gap: '20px', alignItems: 'center', color: '#fff' }}>
-              <button onClick={() => setSearchOpen(!searchOpen)} title="Search library" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
-                <FaSearch size={20} />
+            <div className="library-header-actions" style={{ display: 'flex', gap: '14px', alignItems: 'center', color: '#b3b3b3' }}>
+              <button 
+                onClick={() => setSearchOpen(!searchOpen)} 
+                title="Search library" 
+                style={{ background: 'none', border: 'none', color: searchOpen ? '#1db954' : 'inherit', cursor: 'pointer', padding: '4px' }}
+              >
+                <FaSearch size={18} />
               </button>
-              <button className="library-add-btn" onClick={() => setModalOpen(true)} title="Create playlist" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
-                <FaPlus size={20} />
+              <button 
+                className="library-add-btn" 
+                onClick={() => setModalOpen(true)} 
+                title="Create playlist" 
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '4px' }}
+              >
+                <FaPlus size={18} />
               </button>
             </div>
           </div>
 
-          <div className="universal-filter-chips" style={{ display: 'flex', gap: '8px', padding: '6px 16px 12px 16px', overflowX: 'auto' }}>
-            <span className="filter-chip active" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Playlists</span>
-            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Podcasts</span>
-            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Albums</span>
-            <span className="filter-chip" style={{ background: '#282828', color: '#fff', borderRadius: '20px', padding: '6px 16px', fontSize: '0.82rem', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer' }}>Artists</span>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', color: '#fff', fontSize: '0.85rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 700 }}>
-              <span style={{ fontSize: '0.9rem' }}>↑↓</span>
-              <span>Recents</span>
+          {searchOpen && (
+            <div style={{ padding: '0 16px 12px 16px' }}>
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="Filter playlists..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: '#242424',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-            <div style={{ cursor: 'pointer', color: '#b3b3b3' }}>
-              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zm2.25.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 7a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75zM3.25 11.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm2.25.75a.75.75 0 0 0 .75-.75h6a.75.75 0 0 0 0 1.5h-6a.75.75 0 0 0-.75-.75z" />
-              </svg>
-            </div>
-          </div>
+          )}
 
-          <div className="library-playlists-list hide-scrollbar">
+          {/* Playlist items container */}
+          <div className="library-playlists-list hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
             {modalOpen && (
-              <div className="sidebar-inline-create">
-                <div className="cp-modal-header">
-                  <div className="cp-modal-icon" style={{ width: '36px', height: '36px' }}>
+              <div className="sidebar-inline-create" style={{ margin: '8px 8px 16px 8px', padding: '12px', background: '#242424', borderRadius: '8px' }}>
+                <div className="cp-modal-header" style={{ marginBottom: '8px' }}>
+                  <div className="cp-modal-icon" style={{ width: '32px', height: '32px', background: '#1db954', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FaMusic size={14} />
                   </div>
                   <div>
-                    <h2 className="cp-modal-title" style={{ fontSize: '0.95rem', margin: '0 0 2px 0' }}>Create Playlist</h2>
-                    <p className="cp-modal-subtitle" style={{ fontSize: '0.7rem' }}>Give it a name</p>
+                    <h2 className="cp-modal-title" style={{ fontSize: '0.9rem', margin: 0, color: '#fff' }}>Create Playlist</h2>
                   </div>
                 </div>
 
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   if (newPlaylistName.trim()) handleConfirm(newPlaylistName.trim());
-                }} className="cp-modal-form" style={{ marginTop: '12px', gap: '12px' }}>
-                  <div className="cp-input-wrap">
-                    <input
-                      autoFocus
-                      className="cp-input"
-                      style={{ padding: '10px 12px', fontSize: '0.85rem' }}
-                      type="text"
-                      value={newPlaylistName}
-                      onChange={(e) => setNewPlaylistName(e.target.value)}
-                      placeholder="My Awesome Playlist"
-                      maxLength={50}
-                      autoComplete="off"
-                      spellCheck={false}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          setModalOpen(false);
-                          setNewPlaylistName('');
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="cp-modal-actions" style={{ gap: '8px' }}>
-                    <button type="button" className="cp-btn-cancel" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => { setModalOpen(false); setNewPlaylistName(''); }}>
+                }} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input
+                    autoFocus
+                    className="cp-input"
+                    style={{ padding: '8px 10px', fontSize: '0.85rem', background: '#181818', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff', outline: 'none' }}
+                    type="text"
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    placeholder="My Playlist"
+                    maxLength={50}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setModalOpen(false);
+                        setNewPlaylistName('');
+                      }
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                    <button type="button" className="cp-btn-cancel" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => { setModalOpen(false); setNewPlaylistName(''); }}>
                       Cancel
                     </button>
-                    <button type="submit" className="cp-btn-create" style={{ padding: '6px 14px', fontSize: '0.8rem' }} disabled={!newPlaylistName.trim()}>
-                      <FaPlus size={10} style={{ marginRight: '4px' }} /> Create
+                    <button type="submit" className="cp-btn-create" style={{ padding: '4px 12px', fontSize: '0.75rem', background: '#1db954', color: '#000', border: 'none', borderRadius: '20px', fontWeight: '700' }} disabled={!newPlaylistName.trim()}>
+                      Create
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* Default/Liked Songs Playlist first */}
+            {/* Liked Songs Playlist */}
             <div
               className={`library-playlist-item mobile-playlist-row ${activePlaylistName === 'Liked Songs' ? 'active' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '6px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'background 0.2s ease' }}
               onClick={() => onSelectPlaylist && onSelectPlaylist('Liked Songs')}
             >
               <div 
@@ -213,10 +208,7 @@ export default function Sidebar({
                   width: '48px', 
                   height: '48px', 
                   minWidth: '48px', 
-                  maxWidth: '48px', 
-                  minHeight: '48px',
-                  maxHeight: '48px',
-                  borderRadius: '4px', 
+                  borderRadius: '6px', 
                   flexShrink: 0, 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -224,50 +216,47 @@ export default function Sidebar({
                   background: 'linear-gradient(135deg, #450af5 0%, #8e8ee5 50%, #c4efd9 100%)'
                 }}
               >
-                <FaHeart size={18} fill="#fff" />
+                <FaHeart size={20} fill="#fff" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '2px' }}>
-                <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Liked Songs</span>
-                <span style={{ color: '#a7a7a7', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ color: '#1ed760', fontSize: '0.75rem' }}>📌</span> Playlist • DJ
+                <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Liked Songs</span>
+                <span style={{ color: '#a7a7a7', fontSize: '0.8rem' }}>
+                  Playlist • Favorite Tracks
                 </span>
               </div>
             </div>
 
-            {/* User Playlists */}
+            {/* Custom User Playlists */}
             {playlists
-              .map(p => typeof p === 'string' ? p : p.name)
-              .filter(name => name !== 'Liked Songs')
-              .filter(name => name.toLowerCase().includes(filterText.toLowerCase()))
-              .map(name => (
+              .map(p => typeof p === 'string' ? { name: p, cover: null } : { name: p.name, cover: p.cover || null })
+              .filter(p => p.name !== 'Liked Songs')
+              .filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()))
+              .map(p => (
                 <div
-                  key={name}
-                  className={`library-playlist-item mobile-playlist-row ${activePlaylistName === name ? 'active' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderRadius: '6px' }}
-                  onClick={() => onSelectPlaylist && onSelectPlaylist(name)}
+                  key={p.name}
+                  className={`library-playlist-item mobile-playlist-row ${activePlaylistName === p.name ? 'active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'background 0.2s ease' }}
+                  onClick={() => onSelectPlaylist && onSelectPlaylist(p.name)}
                 >
                   <div 
                     style={{ 
                       width: '48px', 
                       height: '48px', 
                       minWidth: '48px', 
-                      maxWidth: '48px', 
-                      minHeight: '48px',
-                      maxHeight: '48px',
-                      borderRadius: '4px', 
+                      borderRadius: '6px', 
                       flexShrink: 0, 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      background: '#282828'
+                      background: p.cover ? `url(${p.cover}) center/cover` : '#282828'
                     }}
                   >
-                    <FaMusic size={18} fill="#b3b3b3" />
+                    {!p.cover && <FaMusic size={18} fill="#b3b3b3" />}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '2px' }}>
-                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
                     <span style={{ color: '#a7a7a7', fontSize: '0.8rem' }}>
-                      Playlist • DJ
+                      Playlist
                     </span>
                   </div>
                   <button
@@ -275,9 +264,9 @@ export default function Sidebar({
                     className="playlist-delete-icon"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDeletePlaylist && onDeletePlaylist(name);
+                      onDeletePlaylist && onDeletePlaylist(p.name);
                     }}
-                    title={`Delete ${name}`}
+                    title={`Delete ${p.name}`}
                   >
                     <FaTrash size={12} />
                   </button>
@@ -286,6 +275,12 @@ export default function Sidebar({
           </div>
         </div>
       </aside>
+
+      <CreatePlaylistModal
+        isOpen={modalOpen}
+        onConfirm={handleConfirm}
+        onCancel={() => setModalOpen(false)}
+      />
     </>
   );
 }

@@ -11,6 +11,7 @@ import BottomPlayer from './components/BottomPlayer';
 import MobileNav from './components/MobileNav';
 import MobileNowPlaying from './components/MobileNowPlaying';
 import ConfirmDialog from './components/ConfirmDialog';
+import SettingsModal from './components/SettingsModal';
 import './components/styles/App.css';
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -55,6 +56,7 @@ export default function App() {
   const [state, setState] = useState(defaultState);
   const [username, setUsername] = useState(() => userSession?.username || 'Guest');
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isYtReady, setIsYtReady] = useState(false);
   const [volume, setVolume] = useState(0.72);
   const [showQueue, setShowQueue] = useState(true);
@@ -594,6 +596,48 @@ export default function App() {
     socket.emit('get-room-state', { roomId: personalRoom });
   };
 
+  const handleSignOut = () => {
+    try { localStorage.removeItem('musicdudes_user'); } catch {}
+    setUserSession(null);
+    setJoined(false);
+    setState(defaultState);
+    if (socketRef.current) {
+      try { socketRef.current.disconnect(); } catch {}
+    }
+    setToast('Signed out successfully.');
+  };
+
+  const handleExitRoom = () => {
+    const personalRoom = userSession?.email ? ('user_' + userSession.email.replace(/[^a-zA-Z0-9]/g, '_')) : 'main';
+    if (userSession) {
+      const updated = { ...userSession, lastRoom: personalRoom };
+      try { localStorage.setItem('musicdudes_user', JSON.stringify(updated)); } catch {}
+      setUserSession(updated);
+    }
+    roomRef.current = personalRoom;
+    const socket = socketRef.current || getSocket();
+    socket.emit('join-room', { roomId: personalRoom, username: username || 'Guest' });
+    socket.emit('get-room-state', { roomId: personalRoom });
+    setToast('Exited room. Returned to your private session.');
+  };
+
+  const handleUpdatePlaylistCover = (playlistName, cover) => {
+    setState((current) => {
+      const newPlaylists = Array.isArray(current.playlists)
+        ? current.playlists.map(p => {
+            const pName = typeof p === 'string' ? p : p.name;
+            if (pName === playlistName) {
+              return typeof p === 'string' ? { name: p, songs: [], cover } : { ...p, cover };
+            }
+            return p;
+          })
+        : [];
+      return { ...current, playlists: newPlaylists };
+    });
+    emitIfReady('update-playlist-cover', { playlistName, cover });
+    setToast(`Updated cover photo for "${playlistName}" 📷`);
+  };
+
   const handleCreateRoomFromModal = async ({ roomName, password }) => {
     await handleCreate({ roomName, password, username });
     if (userSession) {
@@ -990,6 +1034,15 @@ export default function App() {
             currentRoomId={state.roomId}
           />
 
+          <SettingsModal
+            isOpen={showSettingsModal}
+            onClose={() => setShowSettingsModal(false)}
+            userSession={userSession}
+            onSignOut={handleSignOut}
+            volume={volume}
+            onVolumeChange={setVolume}
+          />
+
           {/* Global Top Bar with Search */}
           <TopBar
             roomId={state.roomId}
@@ -998,16 +1051,18 @@ export default function App() {
             onToggleLike={handleToggleLike}
             onAddToPlaylist={handleAddToPlaylist}
             playlists={state.playlists}
-            onHomeClick={scrollToTop}
             username={username}
+            userSession={userSession}
             onRequestCreateRoom={() => setShowRoomModal(true)}
+            onExitRoom={handleExitRoom}
+            onOpenSettings={() => setShowSettingsModal(true)}
+            onSignOut={handleSignOut}
           />
 
           {/* Three-column content grid */}
           <div className="spotify-main-grid">
             {/* Left: Sidebar with playlists */}
             <Sidebar
-              onHomeClick={scrollToTop}
               onLibraryClick={scrollToPlaylist}
               playlists={state.playlists}
               activePlaylistName={state.activePlaylistName}
@@ -1032,6 +1087,7 @@ export default function App() {
                 onToggleLike={handleToggleLike}
                 onAddToPlaylist={handleAddToPlaylist}
                 onSelectPlaylist={handleSelectPlaylist}
+                onUpdatePlaylistCover={handleUpdatePlaylistCover}
                 showQueue={showQueue}
                 roomId={state.roomId}
                 usersCount={state.users.length}
@@ -1084,7 +1140,6 @@ export default function App() {
 
           <MobileNav
             activeTab={activeMobileTab}
-            onHomeClick={scrollToTop}
             onSearchClick={() => setActiveMobileTab('search')}
             onLibraryClick={scrollToPlaylist}
             onQueueClick={() => setShowQueue(!showQueue)}

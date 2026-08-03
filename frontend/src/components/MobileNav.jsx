@@ -1,24 +1,23 @@
 import React from 'react';
-import { FaHome, FaSearch, FaPlus, FaSpotify } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaListUl } from 'react-icons/fa';
 import { BiLibrary } from 'react-icons/bi';
 import './styles/SpotifyTheme.css';
 
 export default function MobileNav({
-  onHomeClick,
   onSearchClick,
   onLibraryClick,
-  onPremiumClick,
+  onQueueClick,
   onCreateClick,
-  activeTab = 'home'
+  activeTab = 'library'
 }) {
   return (
     <div className="spotify-mobile-nav">
       <button 
-        className={`mobile-nav-btn ${activeTab === 'home' ? 'active' : ''}`} 
-        onClick={onHomeClick}
+        className={`mobile-nav-btn ${activeTab === 'library' ? 'active' : ''}`} 
+        onClick={onLibraryClick}
       >
-        <FaHome size={22} />
-        <span>Home</span>
+        <BiLibrary size={24} />
+        <span>Library</span>
       </button>
       
       <button 
@@ -28,29 +27,13 @@ export default function MobileNav({
         <FaSearch size={22} />
         <span>Search</span>
       </button>
-      
-      <button 
-        className={`mobile-nav-btn ${activeTab === 'library' ? 'active' : ''}`} 
-        onClick={onLibraryClick}
-      >
-        <BiLibrary size={24} />
-        <span>Your Library</span>
-      </button>
 
       <button 
-        className={`mobile-nav-btn ${activeTab === 'premium' ? 'active' : ''}`} 
-        onClick={onPremiumClick}
+        className={`mobile-nav-btn ${activeTab === 'queue' ? 'active' : ''}`} 
+        onClick={onQueueClick}
       >
-        <FaSpotify size={22} />
-        <span>Premium</span>
-      </button>
-
-      <button 
-        className={`mobile-nav-btn ${activeTab === 'create' ? 'active' : ''}`} 
-        onClick={onCreateClick}
-      >
-        <FaPlus size={22} />
-        <span>Create</span>
+        <FaListUl size={22} />
+        <span>Queue</span>
       </button>
     </div>
   );

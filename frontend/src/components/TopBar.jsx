@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  FaHome,
   FaSearch,
   FaHeart,
   FaRegHeart,
@@ -9,8 +8,11 @@ import {
   FaTimes,
   FaHistory,
   FaFolder,
-  FaChevronLeft,
-  FaChevronRight,
+  FaCog,
+  FaSignOutAlt,
+  FaSignOutAlt as FaDoorOpen,
+  FaUser,
+  FaUsers
 } from 'react-icons/fa';
 
 const HISTORY_KEY = 'mwd_search_history';
@@ -31,36 +33,33 @@ function saveHistory(roomId, items) {
 
 export default function TopBar({
   roomId,
-  usersCount,
+  usersCount = 1,
   onAddSong,
   onToggleLike,
   onAddToPlaylist,
   playlists = [],
-  onHomeClick,
   username,
+  userSession,
   onRequestCreateRoom,
+  onExitRoom,
+  onOpenSettings,
+  onSignOut
 }) {
   const [searchValue, setSearchValue] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchProvider, setSearchProvider] = useState('youtube');
   const [searchHistory, setSearchHistory] = useState(() => loadHistory(roomId));
   const [showHistory, setShowHistory] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-
-  useEffect(() => {
-    setSearchHistory(loadHistory(roomId));
-  }, [roomId]);
-
-  useEffect(() => {
-    setSelectedIndex(-1);
-  }, [searchResults, showHistory, searchValue]);
   const [playlistPopover, setPlaylistPopover] = useState({ open: false, track: null });
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
   const searchTimeoutRef = useRef(null);
   const searchContainerRef = useRef(null);
   const searchInputRef = useRef(null);
   const popoverRef = useRef(null);
+  const profileMenuRef = useRef(null);
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
@@ -78,7 +77,15 @@ export default function TopBar({
     return targetId ? likedVideoIds.has(targetId) : false;
   }, [likedVideoIds]);
 
-  // Global Ctrl+L / Cmd+L shortcut to focus search
+  useEffect(() => {
+    setSearchHistory(loadHistory(roomId));
+  }, [roomId]);
+
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [searchResults, showHistory, searchValue]);
+
+  // Global Ctrl+L / Cmd+L shortcut
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
@@ -100,6 +107,9 @@ export default function TopBar({
       }
       if (popoverRef.current && !popoverRef.current.contains(event.target)) {
         setPlaylistPopover({ open: false, track: null });
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -131,7 +141,6 @@ export default function TopBar({
         const data = await response.json();
         if (data.success) {
           setSearchResults(data.tracks || []);
-          setSearchProvider(data.provider || 'youtube');
         }
       } catch (err) {
         console.error('Search query failed:', err);
@@ -156,7 +165,7 @@ export default function TopBar({
   };
   const clearHistory = () => { setSearchHistory([]); saveHistory(roomId, []); };
 
-  // Handlers
+  // Handlers — INSTANT 1-CLICK PLAYBACK
   const handlePlayTrack = (track) => {
     onAddSong(track, '__queue_only__');
     addToHistory(track);
@@ -254,6 +263,8 @@ export default function TopBar({
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
   };
 
+  const isPersonalRoom = !roomId || roomId.startsWith('user_');
+
   const renderTrackRow = (track, itemIndex, isHistoryItem = false) => {
     const liked = isSongLiked(track);
     const isSelected = itemIndex === selectedIndex;
@@ -262,6 +273,7 @@ export default function TopBar({
         key={track.videoId || `${track.title}-${track.artist}`}
         className={`tb-search-item ${isSelected ? 'selected' : ''}`}
         onClick={() => handlePlayTrack(track)}
+        style={{ cursor: 'pointer' }}
       >
         <img src={track.thumbnail} alt="" className="tb-search-thumb" />
         <div className="tb-search-meta">
@@ -313,17 +325,25 @@ export default function TopBar({
     );
   };
 
+  const initialLetter = (username || userSession?.username || userSession?.email || 'U')[0].toUpperCase();
+
   return (
-    <header className="spotify-topbar">
-      {/* Left: Home */}
-      <div className="topbar-left">
-        <button className="topbar-home-btn" onClick={onHomeClick} title="Home">
-          <FaHome size={20} />
-        </button>
+    <header className="spotify-topbar" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', padding: '12px 24px' }}>
+      
+      {/* Left: Branding / Logo */}
+      <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1db954', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: '800' }}>
+            MD
+          </div>
+          <span style={{ color: '#fff', fontWeight: '800', fontSize: '1.1rem', letterSpacing: '-0.3px' }}>
+            MusicDudes
+          </span>
+        </div>
       </div>
 
-      {/* Center: Search Bar */}
-      <div className="topbar-center" ref={searchContainerRef}>
+      {/* Center: Centered Search Bar */}
+      <div className="topbar-center" ref={searchContainerRef} style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
         <form onSubmit={handleSubmit} className="topbar-search-form">
           <div className={`topbar-search-wrap ${isSearchFocused ? 'focused' : ''}`}>
             <FaSearch className="topbar-search-icon" size={16} />
@@ -358,10 +378,6 @@ export default function TopBar({
                 <kbd className="key-badge">L</kbd>
               </div>
             )}
-            <div className="topbar-search-divider"></div>
-            <button type="button" className="topbar-browse-btn" title="Browse">
-              <FaFolder size={15} />
-            </button>
           </div>
         </form>
 
@@ -389,37 +405,171 @@ export default function TopBar({
         )}
       </div>
 
-      {/* Right: Room info & Actions */}
-      <div className="topbar-right">
+      {/* Right: Room Actions & Profile / Settings Menu */}
+      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        
+        {/* Shared Room Display & Exit Room button */}
+        {!isPersonalRoom && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(29,185,84,0.12)', border: '1px solid rgba(29,185,84,0.3)', padding: '4px 12px', borderRadius: '20px' }}>
+            <span className="room-status-indicator online"></span>
+            <span style={{ color: '#fff', fontSize: '0.82rem', fontWeight: '700' }}>Room: {roomId}</span>
+            <span style={{ color: '#b3b3b3', fontSize: '0.78rem' }}>({usersCount} <FaUsers size={11} style={{ display: 'inline', marginLeft: '2px' }} />)</span>
+            
+            <button
+              onClick={onExitRoom}
+              style={{
+                background: 'rgba(255, 77, 77, 0.2)',
+                border: 'none',
+                color: '#ff4d4d',
+                borderRadius: '14px',
+                padding: '4px 10px',
+                fontSize: '0.75rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                marginLeft: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="Exit Room"
+            >
+              Exit Room
+            </button>
+          </div>
+        )}
+
+        {/* Create/Join Room button */}
         {onRequestCreateRoom && (
           <button
             className="topbar-create-room-btn"
             onClick={onRequestCreateRoom}
             style={{
-              background: 'rgba(255,255,255,0.12)',
-              border: 'none',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.15)',
               color: '#fff',
               borderRadius: '20px',
-              padding: '6px 12px',
-              fontSize: '0.78rem',
+              padding: '6px 14px',
+              fontSize: '0.8rem',
               fontWeight: '600',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              marginRight: '8px',
-              transition: 'background 0.2s ease',
+              transition: 'all 0.2s ease',
             }}
-            title="Create or Join a Room"
+            title="Create or Join Room"
           >
             <FaPlus size={10} /> Create Room
           </button>
         )}
-        <div className="room-name-badge">
-          <span className="room-status-indicator online"></span>
-          {roomId || 'Room'}
+
+        {/* User Profile Avatar & Dropdown Menu */}
+        <div style={{ position: 'relative' }} ref={profileMenuRef}>
+          <button
+            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1db954, #1ed760)',
+              color: '#000',
+              fontWeight: '800',
+              fontSize: '0.95rem',
+              border: '2px solid rgba(255,255,255,0.2)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              transition: 'transform 0.2s ease'
+            }}
+            title="Account & Settings"
+          >
+            {initialLetter}
+          </button>
+
+          {profileMenuOpen && (
+            <div 
+              style={{
+                position: 'absolute',
+                top: '46px',
+                right: '0',
+                width: '210px',
+                background: '#181818',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '12px',
+                padding: '8px',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.8)',
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}
+            >
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ color: '#fff', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {username || userSession?.username || 'User'}
+                </div>
+                {!isPersonalRoom && (
+                  <div style={{ color: '#1db954', fontSize: '0.75rem', marginTop: '2px' }}>In Room: {roomId}</div>
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  if (onOpenSettings) onOpenSettings();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  transition: 'background 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#282828'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <FaCog size={14} color="#b3b3b3" /> Settings
+              </button>
+
+              <button
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  if (onSignOut) onSignOut();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ff4d4d',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  transition: 'background 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 77, 77, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <FaSignOutAlt size={14} color="#ff4d4d" /> Sign Out
+              </button>
+            </div>
+          )}
         </div>
-        <span className="room-user-count">{usersCount} listener{usersCount !== 1 ? 's' : ''}</span>
+
       </div>
 
       {/* Playlist popover */}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { FaClock, FaTrash, FaPlay, FaPause, FaMusic, FaHeart, FaUser } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaClock, FaTrash, FaPlay, FaPause, FaMusic, FaHeart, FaUser, FaImage, FaEdit } from 'react-icons/fa';
 
 export default function Playlist({
   queue = [],
@@ -13,10 +13,14 @@ export default function Playlist({
   onPlayFromPlaylist,
   onPlayFromQueue,
   onSelectPlaylist,
+  onUpdatePlaylistCover,
   showQueue,
   roomId = 'Room',
   usersCount = 1,
 }) {
+  const [showCoverInput, setShowCoverInput] = useState(false);
+  const [coverUrl, setCoverUrl] = useState('');
+
   // Calculate total playlist duration
   const totalDuration = (playlist || []).reduce((acc, song) => acc + (song.duration || 0), 0);
   const totalQueueDuration = (queue || []).reduce((acc, song) => acc + (song.duration || 0), 0) + (currentSong?.duration || 0);
@@ -30,11 +34,16 @@ export default function Playlist({
     return `${mins} min`;
   };
 
-  const formatTime = (value) => {
-    const safe = Number.isFinite(value) ? value : 0;
-    const minutes = Math.floor(safe / 60);
-    const seconds = Math.floor(safe % 60).toString().padStart(2, '0');
-    return `${minutes}:${seconds}`;
+  const currentPlaylistObj = (playlists || []).find(p => (typeof p === 'string' ? p : p.name) === activePlaylistName);
+  const customCover = typeof currentPlaylistObj === 'object' ? currentPlaylistObj?.cover : null;
+
+  const handleSaveCover = (e) => {
+    e.preventDefault();
+    if (coverUrl.trim() && onUpdatePlaylistCover) {
+      onUpdatePlaylistCover(activePlaylistName, coverUrl.trim());
+    }
+    setShowCoverInput(false);
+    setCoverUrl('');
   };
 
   if (showQueue) {
@@ -93,7 +102,7 @@ export default function Playlist({
             ) : (
               <div className="empty-queue-state">
                 <FaMusic style={{ fontSize: '2rem', marginBottom: '12px', opacity: 0.3 }} />
-                <p>Queue is empty. Add songs using the search bar on the right to build up your session!</p>
+                <p>Queue is empty. Search for songs to add to your session!</p>
               </div>
             )}
           </div>
@@ -102,64 +111,15 @@ export default function Playlist({
     );
   }
 
-  // RENDER HOME VIEW
-  if (activePlaylistName === 'Home') {
-    let allPlaylists = Array.isArray(playlists)
-      ? playlists.map(p => typeof p === 'string' ? { name: p, songs: [] } : { name: p.name, songs: p.songs || [] })
-      : [];
-      
-    if (!allPlaylists.find(p => p.name === 'Liked Songs')) {
-      allPlaylists = [{ name: 'Liked Songs', songs: [] }, ...allPlaylists];
-    }
-
-    const currentHour = new Date().getHours();
-    const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
-
-    return (
-      <div className="spotify-main-panel fade-in" style={{ padding: '24px 32px' }}>
-        <h1 style={{ color: '#fff', fontSize: '1.75rem', fontWeight: 700, marginBottom: '24px' }}>
-          {greeting}
-        </h1>
-        
-        <div className="home-playlists-grid">
-          {allPlaylists.map((p) => {
-            const firstSong = p.songs && p.songs.length > 0 ? p.songs[0] : null;
-            const isLiked = p.name === 'Liked Songs';
-            return (
-              <div 
-                key={p.name} 
-                className="home-playlist-card"
-                onClick={() => onSelectPlaylist && onSelectPlaylist(p.name)}
-              >
-                <div className="home-playlist-card-img">
-                  {isLiked ? (
-                     <div style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                       <FaHeart size={24} color="#fff" />
-                     </div>
-                  ) : firstSong ? (
-                    <img src={firstSong.thumbnail} alt={p.name} />
-                  ) : (
-                    <FaMusic size={24} color="#b3b3b3" />
-                  )}
-                </div>
-                <div className="home-playlist-card-title">{p.name}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // RENDER PLAYLIST VIEW (default page)
-  const headerCover = playlist.length > 0 ? playlist[0].thumbnail : null;
+  // RENDER PLAYLIST VIEW (Liked Songs or Custom Playlists)
+  const headerCover = customCover || (playlist.length > 0 ? playlist[0].thumbnail : null);
   const isLikedSongs = activePlaylistName === 'Liked Songs';
 
   return (
     <div className="spotify-main-panel fade-in">
       {/* Spotify Playlist Banner */}
       <div className={`playlist-header-banner ${isLikedSongs ? 'liked-songs-banner' : ''}`}>
-        <div className="playlist-cover-art">
+        <div className="playlist-cover-art" style={{ position: 'relative', cursor: !isLikedSongs ? 'pointer' : 'default' }} onClick={() => !isLikedSongs && setShowCoverInput(!showCoverInput)}>
           {isLikedSongs ? (
             /* Styled Liked Songs poster */
             <div className="liked-songs-cover">
@@ -178,15 +138,58 @@ export default function Playlist({
               <FaMusic size={48} />
             </div>
           )}
+
+          {!isLikedSongs && (
+            <div className="cover-edit-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s ease', color: '#fff', fontSize: '0.8rem', fontWeight: 700 }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
+              <FaEdit size={22} style={{ marginBottom: '4px' }} />
+              Choose Photo
+            </div>
+          )}
         </div>
+
         <div className="playlist-header-meta">
           <span className="playlist-badge">PLAYLIST</span>
           <h1 className="playlist-title-main">{activePlaylistName}</h1>
           <div className="playlist-creator-row">
-            <span className="creator-name">🎵 {roomId}</span>
-            <span className="bullet-separator">•</span>
             <span className="creator-details">{playlist.length} song{playlist.length !== 1 ? 's' : ''}, about {formatTotalTime(totalDuration)}</span>
           </div>
+
+          {!isLikedSongs && showCoverInput && (
+            <form onSubmit={handleSaveCover} style={{ marginTop: '12px', display: 'flex', gap: '8px', maxWidth: '400px' }}>
+              <input
+                type="url"
+                required
+                placeholder="Enter image URL (https://...)"
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: 'rgba(0,0,0,0.6)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: '#1db954',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 14px',
+                  fontWeight: '700',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Save Photo
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -221,7 +224,7 @@ export default function Playlist({
             <div className="track-table-header">
               <div className="col-index">#</div>
               <div className="col-title">Title</div>
-              <div className="col-added-by">Requested By</div>
+              <div className="col-added-by">Added By</div>
               <div className="col-duration"><FaClock /></div>
               <div className="col-actions"></div>
             </div>
@@ -231,11 +234,11 @@ export default function Playlist({
             {/* Table Body */}
             {playlist.map((song, index) => (
               <SongRow
-                key={song.id}
+                key={song.id || index}
                 song={song}
                 index={index + 1}
-                isPlayingSong={currentSong?.id === song.id}
-                isCurrentlyActive={currentSong?.id === song.id}
+                isPlayingSong={currentSong?.id === song.id || currentSong?.videoId === song.videoId}
+                isCurrentlyActive={currentSong?.id === song.id || currentSong?.videoId === song.videoId}
                 onSelect={onPlayFromPlaylist}
                 onRemove={onRemoveSong}
                 isPlaying={isPlaying}
@@ -246,8 +249,8 @@ export default function Playlist({
         ) : (
           <div className="empty-playlist-state">
             <FaMusic style={{ fontSize: '3rem', color: '#1db954', marginBottom: '16px' }} />
-            <h2>Add some music to start the party!</h2>
-            <p>Use the "Add a Song" panel on the right sidebar to search and save your favorite tracks to this playlist.</p>
+            <h2>Start your custom playlist!</h2>
+            <p>Search for songs in the top search bar and click '+' to save your favorite tracks to this playlist.</p>
           </div>
         )}
       </div>
@@ -289,7 +292,7 @@ function SongRow({
       onClick={(e) => handleRowClick(e)}
       style={{ cursor: 'pointer' }}
     >
-      {/* Index Column / Play Button Hover state */}
+      {/* Index Column / Play Button */}
       <div className="col-index">
         <span className="row-number-text">{index}</span>
         <button 
