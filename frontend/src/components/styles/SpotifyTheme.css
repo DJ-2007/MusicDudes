@@ -1736,6 +1736,14 @@ textarea.spotify-input {
   min-width: 180px;
 }
 
+.mobile-pill-actions {
+  display: none !important;
+}
+
+.desktop-only-like {
+  display: flex !important;
+}
+
 .bottom-album-cover {
   width: 56px;
   height: 56px;
@@ -2589,14 +2597,18 @@ textarea.spotify-input {
     flex-shrink: 0;
   }
 
+  .desktop-only-like {
+    display: none !important;
+  }
+
   .mobile-pill-actions {
-    display: flex;
+    display: flex !important;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    margin-left: auto;
     flex-shrink: 0;
   }
 
-  .mobile-action-icon-btn,
   .mobile-pill-actions .bottom-like-btn {
     background: none;
     border: none;
@@ -2619,7 +2631,8 @@ textarea.spotify-input {
     justify-content: center;
   }
 
-  .bottom-center-section {
+  .bottom-center-section,
+  .bottom-right-section {
     display: none !important;
   }
 
