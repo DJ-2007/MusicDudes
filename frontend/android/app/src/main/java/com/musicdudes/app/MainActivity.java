@@ -1,22 +1,31 @@
 package com.musicdudes.app;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
 import android.media.AudioManager;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.core.app.NotificationCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final String CHANNEL_ID = "musicdudes_playback_channel";
+    private static final int NOTIFICATION_ID = 1001;
     private MediaSession mediaSession;
     private AudioManager audioManager;
     private Handler clickHandler = new Handler(Looper.getMainLooper());
     private int clickCount = 0;
+
     private Runnable clickRunnable = new Runnable() {
         @Override
         public void run() {
@@ -43,7 +52,44 @@ public class MainActivity extends BridgeActivity {
             settings.setDomStorageEnabled(true);
         }
 
+        createNotificationChannel();
         setupNativeMediaSession();
+        startForegroundPlaybackService();
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "Background Music Playback",
+                NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Keeps MusicDudes playing in background and when screen is locked");
+            channel.setSound(null, null);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void startForegroundPlaybackService() {
+        try {
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("MusicDudes")
+                .setContentText("Playing audio in background")
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build();
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.notify(NOTIFICATION_ID, notification);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void setupNativeMediaSession() {
@@ -107,9 +153,9 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
-                public boolean onMediaButtonEvent(android.content.Intent mediaButtonIntent) {
-                    if (mediaButtonIntent != null && android.content.Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonIntent.getAction())) {
-                        KeyEvent event = mediaButtonIntent.getParcelableExtra(android.content.Intent.EXTRA_KEY_EVENT);
+                public boolean onMediaButtonEvent(Intent mediaButtonIntent) {
+                    if (mediaButtonIntent != null && Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonIntent.getAction())) {
+                        KeyEvent event = mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                         if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
                             if (handleMediaKeyEvent(event)) {
                                 return true;
