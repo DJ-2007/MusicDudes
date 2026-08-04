@@ -961,6 +961,7 @@ export default function App() {
   };
 
   const handlePlayFromPlaylist = (song) => {
+    setShowQueue(false);
     currentVideoIdRef.current = null;
     currentSongIdRef.current = null;
     if (song) {
