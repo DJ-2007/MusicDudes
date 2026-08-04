@@ -5,9 +5,11 @@
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
-    "backgroundColor": "#121212"
+    "backgroundColor": "#121212",
+    "allowNavigation": ["*"]
   },
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "cleartext": true
   }
 }

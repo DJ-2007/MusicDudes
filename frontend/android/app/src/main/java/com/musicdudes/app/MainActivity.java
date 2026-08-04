@@ -50,6 +50,12 @@ public class MainActivity extends BridgeActivity {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
+            webView.setWebViewClient(new com.getcapacitor.BridgeWebViewClient(this.getBridge()) {
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                    return false;
+                }
+            });
         }
 
         createNotificationChannel();
