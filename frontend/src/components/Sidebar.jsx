@@ -112,9 +112,6 @@ export default function Sidebar({
           {/* Header matching Spotify Screenshot 2 */}
           <div className="library-header mobile-library-header" style={{ padding: '16px 20px 8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="library-title-group" onClick={onLibraryClick} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-              <div className="mobile-profile-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1db954', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '0.9rem' }}>
-                {username ? username.charAt(0).toUpperCase() : 'D'}
-              </div>
               <span className="library-label" style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.3px' }}>
                 Your Library
               </span>
