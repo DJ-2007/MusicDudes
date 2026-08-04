@@ -238,7 +238,6 @@ export default function App() {
       setState(prev => ({ ...prev, queue }));
     };
     const handleRoomState = (roomState) => {
-      const player = ytPlayerRef.current;
       const currentVideoId = currentVideoIdRef.current;
       const incomingVideoId = roomState.currentSong?.videoId;
 
@@ -247,22 +246,20 @@ export default function App() {
         roomState = { ...roomState, isPlaying: false };
       }
 
-      // Only seek YouTube player if we are already playing the SAME video
-      if (player && (ytReadyRef.current || isYtReady) && roomState.currentSong && roomState.isPlaying && currentVideoId && currentVideoId === incomingVideoId) {
-        try {
-          const ytTime = player.getCurrentTime?.();
-          if (typeof ytTime === 'number') {
-            const serverTime = roomState.currentTime || 0;
-            const diff = Math.abs(ytTime - serverTime);
-            if (diff < 8) {
-              roomState = { ...roomState, currentTime: ytTime };
-            } else {
-              player.seekTo(serverTime, true);
-            }
-          }
-        } catch {}
-      }
-      setState(roomState);
+      setState(prev => {
+        // If the SAME song is currently playing, preserve local audio state & currentSong object to prevent player glitches/stutter
+        const isSameSong = currentVideoId && incomingVideoId && currentVideoId === incomingVideoId;
+        if (isSameSong) {
+          return {
+            ...roomState,
+            currentSong: prev.currentSong || roomState.currentSong,
+            isPlaying: prev.isPlaying,
+            currentTime: prev.currentTime,
+          };
+        }
+        return roomState;
+      });
+
       roomRef.current = roomState.roomId || roomRef.current;
       setJoined(true);
       setLoading(false);
@@ -386,7 +383,7 @@ export default function App() {
       }
     }
     return undefined;
-  }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying, volume, isYtReady]);
+  }, [state.currentSong?.videoId, state.isPlaying, volume, isYtReady]);
 
   const stateRef = useRef(state);
   useEffect(() => {
