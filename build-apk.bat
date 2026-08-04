@@ -1,31 +1,36 @@
 @echo off
+title Building MusicDudes APK...
+echo ========================================================
+echo   MusicDudes - Standalone Native APK Builder
+echo ========================================================
+echo.
+
+set "ROOT_DIR=%~dp0"
 set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
 set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
 
-cd /d "%~dp0frontend"
-echo Syncing web assets into Capacitor Android...
+cd /d "%ROOT_DIR%frontend"
+echo [1/3] Syncing React build into Capacitor...
 call npx.cmd cap copy android
 
-cd /d "%~dp0frontend\android"
-echo Stopping old Gradle daemons...
+cd /d "%ROOT_DIR%frontend\android"
+echo.
+echo [2/3] Stopping background processes...
 call gradlew.bat --stop >nul 2>&1
 
-echo Compiling Standalone Native APK via Capacitor...
+echo.
+echo [3/3] Compiling Native Android APK...
 call gradlew.bat assembleDebug --no-daemon "-Dorg.gradle.java.home=C:/Program Files/Android/Android Studio/jbr"
 
-if exist "%~dp0frontend\android\app\build\outputs\apk\debug\app-debug.apk" (
-    copy /Y "%~dp0frontend\android\app\build\outputs\apk\debug\app-debug.apk" "%~dp0MusicDudes.apk" >nul
-    echo.
+echo.
+if exist "%ROOT_DIR%frontend\android\app\build\outputs\apk\debug\app-debug.apk" (
+    copy /Y "%ROOT_DIR%frontend\android\app\build\outputs\apk\debug\app-debug.apk" "%ROOT_DIR%MusicDudes.apk" >nul
     echo ========================================================
-    echo SUCCESS! Standalone Capacitor Native APK is ready:
-    echo %~dp0MusicDudes.apk
+    echo   SUCCESS! Standalone Native APK Built Successfully!
+    echo   Location: %ROOT_DIR%MusicDudes.apk
     echo ========================================================
 ) else (
-    echo.
     echo ========================================================
-    echo To build your APK in 1 click using Android Studio:
-    echo 1. Open terminal in frontend directory
-    echo 2. Run: npx cap open android
-    echo 3. In Android Studio, click: Build - Build APKs
+    echo   BUILD ERROR: Check the log output above.
     echo ========================================================
 )
