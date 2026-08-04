@@ -5,6 +5,8 @@ import android.media.AudioManager;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -13,6 +15,21 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private MediaSession mediaSession;
     private AudioManager audioManager;
+    private Handler clickHandler = new Handler(Looper.getMainLooper());
+    private int clickCount = 0;
+    private Runnable clickRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (clickCount == 1) {
+                dispatchActionToWeb("togglePlay");
+            } else if (clickCount == 2) {
+                dispatchActionToWeb("next");
+            } else if (clickCount >= 3) {
+                dispatchActionToWeb("previous");
+            }
+            clickCount = 0;
+        }
+    };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,6 +66,8 @@ public class MainActivity extends BridgeActivity {
                     PlaybackState.ACTION_PLAY_PAUSE |
                     PlaybackState.ACTION_SKIP_TO_NEXT |
                     PlaybackState.ACTION_SKIP_TO_PREVIOUS |
+                    PlaybackState.ACTION_FAST_FORWARD |
+                    PlaybackState.ACTION_REWIND |
                     PlaybackState.ACTION_STOP
                 )
                 .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
@@ -78,8 +97,13 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
-                public void onStop() {
-                    dispatchActionToWeb("pause");
+                public void onFastForward() {
+                    dispatchActionToWeb("next");
+                }
+
+                @Override
+                public void onRewind() {
+                    dispatchActionToWeb("previous");
                 }
 
                 @Override
@@ -87,21 +111,7 @@ public class MainActivity extends BridgeActivity {
                     if (mediaButtonIntent != null && android.content.Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonIntent.getAction())) {
                         KeyEvent event = mediaButtonIntent.getParcelableExtra(android.content.Intent.EXTRA_KEY_EVENT);
                         if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
-                            int keyCode = event.getKeyCode();
-                            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
-                                dispatchActionToWeb("togglePlay");
-                                return true;
-                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                                dispatchActionToWeb("next");
-                                return true;
-                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                                dispatchActionToWeb("previous");
-                                return true;
-                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
-                                dispatchActionToWeb("play");
-                                return true;
-                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-                                dispatchActionToWeb("pause");
+                            if (handleMediaKeyEvent(event)) {
                                 return true;
                             }
                         }
@@ -117,6 +127,38 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private boolean handleMediaKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || 
+            keyCode == KeyEvent.KEYCODE_MEDIA_STEP_FORWARD || 
+            keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
+            dispatchActionToWeb("next");
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS || 
+                   keyCode == KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD || 
+                   keyCode == KeyEvent.KEYCODE_MEDIA_REWIND) {
+            dispatchActionToWeb("previous");
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || 
+                   keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+            handleMultiClick();
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
+            dispatchActionToWeb("play");
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+            dispatchActionToWeb("pause");
+            return true;
+        }
+        return false;
+    }
+
+    private void handleMultiClick() {
+        clickCount++;
+        clickHandler.removeCallbacks(clickRunnable);
+        clickHandler.postDelayed(clickRunnable, 350);
+    }
+
     private void dispatchActionToWeb(String action) {
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
@@ -130,21 +172,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            int keyCode = event.getKeyCode();
-            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
-                dispatchActionToWeb("togglePlay");
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                dispatchActionToWeb("next");
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                dispatchActionToWeb("previous");
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
-                dispatchActionToWeb("play");
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-                dispatchActionToWeb("pause");
+            if (handleMediaKeyEvent(event)) {
                 return true;
             }
         }
