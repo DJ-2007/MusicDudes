@@ -1,5 +1,9 @@
 package com.musicdudes.app;
 
+import android.content.Context;
+import android.media.AudioManager;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.webkit.WebSettings;
@@ -7,9 +11,13 @@ import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private MediaSession mediaSession;
+    private AudioManager audioManager;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
             WebSettings settings = webView.getSettings();
@@ -17,34 +25,127 @@ public class MainActivity extends BridgeActivity {
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
         }
+
+        setupNativeMediaSession();
+    }
+
+    private void setupNativeMediaSession() {
+        try {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN
+                );
+            }
+
+            mediaSession = new MediaSession(this, "MusicDudesMediaSession");
+            
+            PlaybackState state = new PlaybackState.Builder()
+                .setActions(
+                    PlaybackState.ACTION_PLAY |
+                    PlaybackState.ACTION_PAUSE |
+                    PlaybackState.ACTION_PLAY_PAUSE |
+                    PlaybackState.ACTION_SKIP_TO_NEXT |
+                    PlaybackState.ACTION_SKIP_TO_PREVIOUS |
+                    PlaybackState.ACTION_STOP
+                )
+                .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                .build();
+
+            mediaSession.setPlaybackState(state);
+
+            mediaSession.setCallback(new MediaSession.Callback() {
+                @Override
+                public void onPlay() {
+                    dispatchActionToWeb("play");
+                }
+
+                @Override
+                public void onPause() {
+                    dispatchActionToWeb("pause");
+                }
+
+                @Override
+                public void onSkipToNext() {
+                    dispatchActionToWeb("next");
+                }
+
+                @Override
+                public void onSkipToPrevious() {
+                    dispatchActionToWeb("previous");
+                }
+
+                @Override
+                public void onStop() {
+                    dispatchActionToWeb("pause");
+                }
+
+                @Override
+                public boolean onMediaButtonEvent(android.content.Intent mediaButtonIntent) {
+                    if (mediaButtonIntent != null && android.content.Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonIntent.getAction())) {
+                        KeyEvent event = mediaButtonIntent.getParcelableExtra(android.content.Intent.EXTRA_KEY_EVENT);
+                        if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
+                            int keyCode = event.getKeyCode();
+                            if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+                                dispatchActionToWeb("togglePlay");
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                                dispatchActionToWeb("next");
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                                dispatchActionToWeb("previous");
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
+                                dispatchActionToWeb("play");
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                                dispatchActionToWeb("pause");
+                                return true;
+                            }
+                        }
+                    }
+                    return super.onMediaButtonEvent(mediaButtonIntent);
+                }
+            });
+
+            mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+            mediaSession.setActive(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void dispatchActionToWeb(String action) {
+        WebView webView = this.getBridge().getWebView();
+        if (webView != null) {
+            final String jsAction = action;
+            webView.post(() -> webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('earbud-mediakey', { detail: { action: '" + jsAction + "' } }));", null
+            ));
+        }
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
-            String action = null;
             if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
-                action = "togglePlay";
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
-                action = "play";
-            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
-                action = "pause";
+                dispatchActionToWeb("togglePlay");
+                return true;
             } else if (keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                action = "next";
+                dispatchActionToWeb("next");
+                return true;
             } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                action = "previous";
-            }
-
-            if (action != null) {
-                WebView webView = this.getBridge().getWebView();
-                if (webView != null) {
-                    final String jsAction = action;
-                    webView.post(() -> webView.evaluateJavascript(
-                        "window.dispatchEvent(new CustomEvent('earbud-mediakey', { detail: { action: '" + jsAction + "' } }));", null
-                    ));
-                    return true;
-                }
+                dispatchActionToWeb("previous");
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY) {
+                dispatchActionToWeb("play");
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                dispatchActionToWeb("pause");
+                return true;
             }
         }
         return super.dispatchKeyEvent(event);
@@ -57,5 +158,14 @@ public class MainActivity extends BridgeActivity {
         if (webView != null) {
             webView.onResume();
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+        }
+        super.onDestroy();
     }
 }
