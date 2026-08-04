@@ -12,6 +12,7 @@ import MobileNav from './components/MobileNav';
 import MobileNowPlaying from './components/MobileNowPlaying';
 import ConfirmDialog from './components/ConfirmDialog';
 import SettingsModal from './components/SettingsModal';
+import { POPULAR_PLAYLISTS } from './data/popularPlaylists';
 import './components/styles/App.css';
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -77,6 +78,27 @@ export default function App() {
 
   const [activeMobileTab, setActiveMobileTab] = useState('home');
   const [showMobileNowPlaying, setShowMobileNowPlaying] = useState(false);
+  const [recentlyPlayed, setRecentlyPlayed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicdudes_recent_tracks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addToRecentlyPlayed = (song) => {
+    if (!song) return;
+    setRecentlyPlayed((prev) => {
+      const targetId = song.videoId || song.id;
+      const filtered = prev.filter((s) => (s.videoId || s.id) !== targetId);
+      const updated = [song, ...filtered].slice(0, 20);
+      try {
+        localStorage.getItem && localStorage.setItem('musicdudes_recent_tracks', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -888,7 +910,18 @@ export default function App() {
 
   const handleSelectPlaylist = (playlistName) => {
     setShowQueue(false);
-    emitIfReady('select-playlist', { playlistName });
+    setActiveMobileTab('playlist');
+
+    const popularFound = POPULAR_PLAYLISTS.find((p) => p.name === playlistName);
+    if (popularFound) {
+      setState((prev) => ({
+        ...prev,
+        activePlaylistName: playlistName,
+        playlist: popularFound.songs,
+      }));
+    } else {
+      emitIfReady('select-playlist', { playlistName });
+    }
   };
 
   const handleDeletePlaylist = (playlistName) => {
@@ -931,6 +964,7 @@ export default function App() {
     currentVideoIdRef.current = null;
     currentSongIdRef.current = null;
     if (song) {
+      addToRecentlyPlayed(song);
       setState(prev => ({
         ...prev,
         currentSong: song,
@@ -1107,12 +1141,13 @@ export default function App() {
           <div className="spotify-main-grid">
             {/* Left: Sidebar with playlists */}
             <Sidebar
-              onLibraryClick={scrollToPlaylist}
+              onLibraryClick={() => setActiveMobileTab('library')}
               playlists={state.playlists}
               activePlaylistName={state.activePlaylistName}
               onSelectPlaylist={handleSelectPlaylist}
               onDeletePlaylist={handleDeletePlaylist}
               onCreatePlaylist={handleCreatePlaylist}
+              username={username}
             />
 
             {/* Center: Playlist / Queue */}
@@ -1129,12 +1164,15 @@ export default function App() {
                 onPlayFromPlaylist={handlePlayFromPlaylist}
                 onPlayFromQueue={handlePlayFromQueue}
                 onToggleLike={handleToggleLike}
+                onAddSong={handleAddSong}
                 onAddToPlaylist={handleAddToPlaylist}
                 onSelectPlaylist={handleSelectPlaylist}
                 onUpdatePlaylistCover={handleUpdatePlaylistCover}
                 showQueue={showQueue}
                 roomId={state.roomId}
                 usersCount={state.users.length}
+                onBackToLibrary={() => setActiveMobileTab('library')}
+                recentlyPlayed={recentlyPlayed}
               />
             </main>
 
@@ -1185,7 +1223,7 @@ export default function App() {
           <MobileNav
             activeTab={activeMobileTab}
             onSearchClick={() => setActiveMobileTab('search')}
-            onLibraryClick={scrollToPlaylist}
+            onLibraryClick={() => setActiveMobileTab(activeMobileTab === 'playlist' ? 'library' : 'library')}
             onQueueClick={() => setShowQueue(!showQueue)}
           />
 

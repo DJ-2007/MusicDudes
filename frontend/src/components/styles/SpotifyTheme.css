@@ -2743,10 +2743,15 @@ textarea.spotify-input {
   .spotify-main-content { display: none !important; }
 
   /* Conditional view rendering based on mobile state */
-  .mobile-active-home .spotify-main-content {
+  .mobile-active-home .spotify-main-content,
+  .mobile-active-playlist .spotify-main-content {
     display: flex !important;
     width: 100% !important;
     padding: 8px !important;
+  }
+
+  .mobile-active-playlist .spotify-sidebar {
+    display: none !important;
   }
 
   .mobile-active-library .spotify-sidebar {
@@ -2760,6 +2765,7 @@ textarea.spotify-input {
 
   /* Library Top Bar hides default search box */
   .mobile-active-library .spotify-topbar .topbar-center,
+  .mobile-active-playlist .spotify-topbar .topbar-center,
   .mobile-active-home .spotify-topbar .topbar-center {
      display: none !important;
   }
