@@ -12,7 +12,6 @@ import MobileNav from './components/MobileNav';
 import MobileNowPlaying from './components/MobileNowPlaying';
 import ConfirmDialog from './components/ConfirmDialog';
 import SettingsModal from './components/SettingsModal';
-import { POPULAR_PLAYLISTS } from './data/popularPlaylists';
 import './components/styles/App.css';
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -911,17 +910,7 @@ export default function App() {
   const handleSelectPlaylist = (playlistName) => {
     setShowQueue(false);
     setActiveMobileTab('playlist');
-
-    const popularFound = POPULAR_PLAYLISTS.find((p) => p.name === playlistName);
-    if (popularFound) {
-      setState((prev) => ({
-        ...prev,
-        activePlaylistName: playlistName,
-        playlist: popularFound.songs,
-      }));
-    } else {
-      emitIfReady('select-playlist', { playlistName });
-    }
+    emitIfReady('select-playlist', { playlistName });
   };
 
   const handleDeletePlaylist = (playlistName) => {

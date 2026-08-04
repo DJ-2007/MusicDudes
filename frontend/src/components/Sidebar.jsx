@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaSearch, FaMusic, FaPlus, FaTrash, FaHeart, FaTimes, FaThList, FaThLarge, FaBookmark } from 'react-icons/fa';
-import { POPULAR_PLAYLISTS } from '../data/popularPlaylists';
 
 function CreatePlaylistModal({ isOpen, onConfirm, onCancel }) {
   const [name, setName] = useState('');
@@ -357,41 +356,7 @@ export default function Sidebar({
                 </div>
               ))}
 
-            {/* 4. Suggested Popular Spotify Playlists & Podcasts matching Screenshot 2 */}
-            {POPULAR_PLAYLISTS
-              .filter(p => {
-                if (activeChip === 'Playlists') return p.type === 'Playlist';
-                if (activeChip === 'Podcasts') return p.type === 'Podcast';
-                return true;
-              })
-              .filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()))
-              .map(pop => (
-                <div
-                  key={pop.name}
-                  className={`library-playlist-item mobile-playlist-row ${activePlaylistName === pop.name ? 'active' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'background 0.2s ease' }}
-                  onClick={() => onSelectPlaylist && onSelectPlaylist(pop.name)}
-                >
-                  <img
-                    src={pop.cover}
-                    alt={pop.name}
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      minWidth: '48px',
-                      borderRadius: '6px',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '2px' }}>
-                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pop.name}</span>
-                    <span style={{ color: '#a7a7a7', fontSize: '0.8rem' }}>
-                      {pop.subtitle}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            {/* End of Playlists */}
 
           </div>
         </div>
