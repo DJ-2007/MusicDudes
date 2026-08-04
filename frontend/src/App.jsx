@@ -419,7 +419,25 @@ export default function App() {
     }
   }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying]);
 
-
+  // Listen for hardware Bluetooth Earbuds & Headphones media key events dispatched by MainActivity.java
+  useEffect(() => {
+    const handleEarbudKey = (e) => {
+      const action = e.detail?.action;
+      if (action === 'togglePlay') {
+        handleTogglePlay();
+      } else if (action === 'play') {
+        if (!stateRef.current?.isPlaying) handleTogglePlay();
+      } else if (action === 'pause') {
+        if (stateRef.current?.isPlaying) handleTogglePlay();
+      } else if (action === 'next') {
+        handleNext();
+      } else if (action === 'previous') {
+        handlePrevious();
+      }
+    };
+    window.addEventListener('earbud-mediakey', handleEarbudKey);
+    return () => window.removeEventListener('earbud-mediakey', handleEarbudKey);
+  }, []);
 
   // Time sync: periodically check YT player time and sync with server
   useEffect(() => {
@@ -833,9 +851,25 @@ export default function App() {
   };
 
   const handlePrevious = () => {
-    currentVideoIdRef.current = null;
-    currentSongIdRef.current = null;
-    emitIfReady('previous-song');
+    let currentAudioTime = state.currentTime || 0;
+    if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
+      try {
+        const ytTime = ytPlayerRef.current.getCurrentTime();
+        if (typeof ytTime === 'number' && ytTime > 0) currentAudioTime = ytTime;
+      } catch {}
+    } else if (audioRef.current && audioRef.current.currentTime > 0) {
+      currentAudioTime = audioRef.current.currentTime;
+    }
+
+    if (currentAudioTime > 5) {
+      // If song has played for > 5s, restart current song from beginning
+      handleSeek(0);
+    } else {
+      // If within 5 seconds, play previous song
+      currentVideoIdRef.current = null;
+      currentSongIdRef.current = null;
+      emitIfReady('previous-song');
+    }
   };
 
   const handleToggleShuffle = () => {
