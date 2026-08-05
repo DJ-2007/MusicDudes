@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.core.app.NotificationCompat;
@@ -44,6 +45,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
             WebSettings settings = webView.getSettings();
@@ -58,40 +61,17 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
-        createNotificationChannel();
         setupNativeMediaSession();
         startForegroundPlaybackService();
     }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "Background Music Playback",
-                NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Keeps MusicDudes playing in background and when screen is locked");
-            channel.setSound(null, null);
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
-        }
-    }
-
     private void startForegroundPlaybackService() {
         try {
-            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("MusicDudes")
-                .setContentText("Playing audio in background")
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .build();
-
-            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (manager != null) {
-                manager.notify(NOTIFICATION_ID, notification);
+            Intent serviceIntent = new Intent(this, MediaPlaybackService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -234,6 +214,15 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
+        WebView webView = this.getBridge().getWebView();
+        if (webView != null) {
+            webView.onResume();
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
             webView.onResume();
