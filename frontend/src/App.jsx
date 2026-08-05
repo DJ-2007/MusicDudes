@@ -312,8 +312,8 @@ export default function App() {
       const isInitialRestore = currentVideoIdRef.current === null && (state.currentTime || 0) > 0;
       const startSec = isInitialRestore ? (state.currentTime || 0) : 0;
 
-      // Engine 1: YouTube IFrame Player (Web browser primary)
-      if (!isCapacitor && player && (ytReadyRef.current || isYtReady) && typeof player.loadVideoById === 'function') {
+      // Engine 1: YouTube IFrame Player (Primary audio playback)
+      if (player && (ytReadyRef.current || isYtReady) && typeof player.loadVideoById === 'function') {
         try {
           if (typeof player.unMute === 'function') player.unMute();
           if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
@@ -325,8 +325,8 @@ export default function App() {
         }
       }
 
-      // Engine 2: HTML5 Proxy Stream (Native Mobile Primary for continuous lockscreen & background playback)
-      if ((isCapacitor || !loaded) && audioRef.current) {
+      // Engine 2: HTML5 Proxy Stream (Fallback & background lockscreen audio)
+      if (!loaded && audioRef.current) {
         try {
           audioRef.current.src = `${API_URL}/audio/${videoId}`;
           audioRef.current.volume = volume;
@@ -338,13 +338,6 @@ export default function App() {
         } catch (e) {
           console.error('HTML5 audio error:', e);
         }
-      } else if (audioRef.current && loaded && !isCapacitor) {
-        // Pause secondary HTML5 stream so it doesn't trigger fake onEnded calls after 5s
-        try {
-          audioRef.current.pause();
-          audioRef.current.removeAttribute('src');
-          audioRef.current.load();
-        } catch {}
       }
 
       if (loaded) {
