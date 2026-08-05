@@ -51,7 +51,8 @@ export default function AddSong({
   const [playlistPopover, setPlaylistPopover] = useState({ open: false, track: null });
   const popoverRef = useRef(null);
 
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isCapacitor = typeof window !== 'undefined' && (window.location.protocol === 'capacitor:' || window.location.origin.includes('capacitor') || !!window.Capacitor);
+  const isLocalhost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !isCapacitor;
   const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
 
   // Extract playlist names
