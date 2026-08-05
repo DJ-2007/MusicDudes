@@ -53,6 +53,7 @@ public class MainActivity extends BridgeActivity {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
             webView.setWebViewClient(new com.getcapacitor.BridgeWebViewClient(this.getBridge()) {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -217,6 +218,7 @@ public class MainActivity extends BridgeActivity {
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
             webView.onResume();
+            webView.resumeTimers();
         }
     }
 
@@ -226,6 +228,17 @@ public class MainActivity extends BridgeActivity {
         WebView webView = this.getBridge().getWebView();
         if (webView != null) {
             webView.onResume();
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        WebView webView = this.getBridge().getWebView();
+        if (webView != null) {
+            webView.onResume();
+            webView.resumeTimers();
         }
     }
 
