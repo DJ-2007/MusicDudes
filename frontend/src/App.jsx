@@ -1270,6 +1270,26 @@ export default function App() {
 
         </div>
       )}
+
+      {/* Hidden YouTube IFrame container & HTML5 Audio Element for Sound & Background Playback */}
+      <div 
+        id="yt-player-hidden" 
+        style={{ 
+          position: 'fixed', 
+          bottom: 0, 
+          right: 0, 
+          width: '1px', 
+          height: '1px', 
+          opacity: 0.01, 
+          pointerEvents: 'none', 
+          zIndex: -999 
+        }} 
+      />
+      <audio 
+        ref={audioRef} 
+        style={{ display: 'none' }} 
+        playsInline 
+      />
     </>
   );
 }
