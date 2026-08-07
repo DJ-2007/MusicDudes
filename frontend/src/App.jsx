@@ -14,7 +14,10 @@ import ConfirmDialog from './components/ConfirmDialog';
 import SettingsModal from './components/SettingsModal';
 import './components/styles/App.css';
 
+import { registerPlugin } from '@capacitor/core';
+
 const isCapacitor = typeof window !== 'undefined' && (window.location.protocol === 'capacitor:' || window.location.origin.includes('capacitor') || !!window.Capacitor);
+const NativeAudio = registerPlugin('NativeAudio');
 const isLocalhost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !isCapacitor;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
 const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? `${window.location.protocol}//${window.location.hostname}:4000` : 'https://musicdudes.onrender.com');
@@ -340,6 +343,21 @@ export default function App() {
         }
       }
 
+      // Engine 3: Capacitor Native Android Player (Native Java MediaPlayer for 24/7 Background Playback)
+      if (isCapacitor && videoId) {
+        try {
+          NativeAudio.play({
+            url: `${API_URL}/audio/${videoId}`,
+            title: state.currentSong?.title || 'MusicDudes Track',
+            artist: state.currentSong?.artist || 'MusicDudes',
+            startMs: Math.floor(startSec * 1000)
+          });
+          loaded = true;
+        } catch (e) {
+          console.error('NativeAudio play error:', e);
+        }
+      }
+
       if (loaded) {
         currentVideoIdRef.current = videoId;
         currentSongIdRef.current = songId;
@@ -352,8 +370,14 @@ export default function App() {
     if (audioRef.current && audioRef.current.src) {
       try { audioRef.current.volume = volume; } catch {}
     }
+    if (isCapacitor) {
+      try { NativeAudio.setVolume({ volume }); } catch {}
+    }
 
     if (state.isPlaying) {
+      if (isCapacitor) {
+        try { NativeAudio.resume().catch(() => {}); } catch {}
+      }
       // Engine 1 sync
       if (player && typeof player.getPlayerState === 'function') {
         try {
@@ -369,6 +393,9 @@ export default function App() {
         try { audioRef.current.play().catch(() => {}); } catch {}
       }
     } else {
+      if (isCapacitor) {
+        try { NativeAudio.pause().catch(() => {}); } catch {}
+      }
       if (player && typeof player.pauseVideo === 'function') {
         try { player.pauseVideo(); } catch {}
       }
@@ -412,6 +439,33 @@ export default function App() {
       console.error('MediaSession initialization error:', e);
     }
   }, [state.currentSong?.id, state.currentSong?.videoId, state.isPlaying]);
+
+  // Listen for Native Android MediaPlayer events (Background Lockscreen Playback)
+  useEffect(() => {
+    if (!isCapacitor) return;
+    let subs = [];
+    (async () => {
+      subs.push(await NativeAudio.addListener('onEnded', () => {
+        handleNext();
+      }));
+      subs.push(await NativeAudio.addListener('onPlay', () => {
+        if (!stateRef.current?.isPlaying) handleTogglePlay();
+      }));
+      subs.push(await NativeAudio.addListener('onPause', () => {
+        if (stateRef.current?.isPlaying) handleTogglePlay();
+      }));
+      subs.push(await NativeAudio.addListener('onNext', () => {
+        handleNext();
+      }));
+      subs.push(await NativeAudio.addListener('onPrevious', () => {
+        handlePrevious();
+      }));
+    })();
+
+    return () => {
+      subs.forEach(s => s?.remove && s.remove());
+    };
+  }, []);
 
   // Listen for hardware Bluetooth Earbuds & Headphones media key events dispatched by MainActivity.java
   useEffect(() => {
