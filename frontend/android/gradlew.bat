@@ -1,16 +1,7 @@
-@if "%DEBUG%"=="" @echo off
-
-set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
-set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
-
-@rem ##########################################################################
-@rem
-@rem  Gradle startup script for Windows
-@rem
-@rem ##########################################################################
-
 @rem Set local scope for the variables with windows NT shell
 if "%OS%"=="Windows_NT" setlocal
+set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
 
 set DIRNAME=%~dp0
 if "%DIRNAME%"=="" set DIRNAME=.
@@ -40,7 +31,7 @@ goto fail
 
 :findJavaFromJavaHome
 set JAVA_HOME=%JAVA_HOME:"=%
-set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+set "JAVA_EXE=%JAVA_HOME%\bin\java.exe"
 
 if exist "%JAVA_EXE%" goto execute
 
@@ -59,7 +50,7 @@ set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" "-Dorg.gradle.java.home=C:/Program Files/Android/Android Studio/jbr" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
 
 :end
 @rem End local scope for the variables with windows NT shell
