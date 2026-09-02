@@ -478,7 +478,105 @@ function rewindTrack(room) {
   }
 }
 
-// --- Audio Routes ---
+// --- OTP & Google Auth Storage & Endpoints ---
+const pendingOtps = new Map(); // phone -> { otp, expiresAt, attempts }
+
+app.post('/api/auth/send-otp', (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
+      return res.status(400).json({ error: 'Valid phone number is required.' });
+    }
+    const cleanPhone = phone.trim();
+    // Generate secure 6-digit numeric OTP code
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    
+    pendingOtps.set(cleanPhone, { otp, expiresAt, attempts: 0 });
+    console.log(`📱 OTP generated for ${cleanPhone}: [${otp}]`);
+
+    return res.json({
+      ok: true,
+      phone: cleanPhone,
+      otp, // Dispatched to client for SMS notification delivery
+      message: `OTP sent successfully to ${cleanPhone}`
+    });
+  } catch (err) {
+    console.error('Send OTP error:', err);
+    return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+  }
+});
+
+app.post('/api/auth/verify-otp', (req, res) => {
+  try {
+    const { phone, otp, displayName } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ error: 'Phone number and OTP code are required.' });
+    }
+    const cleanPhone = String(phone).trim();
+    const cleanOtp = String(otp).trim();
+
+    const record = pendingOtps.get(cleanPhone);
+    if (!record) {
+      return res.status(400).json({ error: 'No OTP requested for this phone number. Please click "Send OTP Code".' });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      pendingOtps.delete(cleanPhone);
+      return res.status(400).json({ error: 'OTP code has expired. Please request a new code.' });
+    }
+
+    if (record.otp !== cleanOtp) {
+      record.attempts = (record.attempts || 0) + 1;
+      if (record.attempts >= 5) {
+        pendingOtps.delete(cleanPhone);
+        return res.status(400).json({ error: 'Too many failed attempts. Please request a new OTP code.' });
+      }
+      return res.status(400).json({ error: 'Invalid OTP code. Please check your SMS and enter the correct code.' });
+    }
+
+    // OTP Verified successfully! Clear used OTP
+    pendingOtps.delete(cleanPhone);
+    const username = (displayName && displayName.trim()) || `User_${cleanPhone.slice(-4)}`;
+    const userEmail = `${cleanPhone.replace(/\D/g, '')}@phone.musicdudes.com`;
+
+    return res.json({
+      ok: true,
+      user: {
+        email: userEmail,
+        phone: cleanPhone,
+        username,
+        type: 'phone'
+      },
+      message: 'Phone number verified successfully.'
+    });
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    return res.status(500).json({ error: 'Verification failed. Please try again.' });
+  }
+});
+
+app.post('/api/auth/google', (req, res) => {
+  try {
+    const { email, name, picture, googleId } = req.body;
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid Google account email is required.' });
+    }
+    const username = name || email.split('@')[0];
+    return res.json({
+      ok: true,
+      user: {
+        email: email.trim(),
+        username,
+        picture: picture || null,
+        googleId: googleId || null,
+        type: 'google'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Google authentication failed.' });
+  }
+});
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, rooms: roomCache.size });

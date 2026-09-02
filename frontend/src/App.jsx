@@ -315,7 +315,7 @@ export default function App() {
       const isInitialRestore = currentVideoIdRef.current === null && (state.currentTime || 0) > 0;
       const startSec = isInitialRestore ? (state.currentTime || 0) : 0;
 
-      // Engine 1: YouTube IFrame Player (Primary audio playback)
+      // Engine 1: YouTube IFrame Player (Primary audio & video playback)
       if (player && (ytReadyRef.current || isYtReady) && typeof player.loadVideoById === 'function') {
         try {
           if (typeof player.unMute === 'function') player.unMute();
@@ -328,8 +328,8 @@ export default function App() {
         }
       }
 
-      // Engine 2: HTML5 Proxy Stream (Fallback & background lockscreen audio)
-      if (!loaded && audioRef.current) {
+      // Engine 2: HTML5 Proxy Stream (Fallback for web browser)
+      if (!isCapacitor && !loaded && audioRef.current) {
         try {
           audioRef.current.src = `${API_URL}/audio/${videoId}`;
           audioRef.current.volume = volume;
@@ -343,7 +343,7 @@ export default function App() {
         }
       }
 
-      // Engine 3: Capacitor Native Android Player (Native Java MediaPlayer for 24/7 Background Playback)
+      // Engine 3: Capacitor Native Android Player (Native Java MediaPlayer & Background Notification Service)
       if (isCapacitor && videoId) {
         try {
           NativeAudio.play({
@@ -384,12 +384,13 @@ export default function App() {
           const playerState = player.getPlayerState();
           if (playerState !== 1 && playerState !== 3) {
             if (typeof player.unMute === 'function') player.unMute();
+            if (typeof player.setVolume === 'function') player.setVolume(volume * 100);
             if (typeof player.playVideo === 'function') player.playVideo();
           }
         } catch {}
       }
       // Engine 2 sync
-      if (audioRef.current && audioRef.current.src && audioRef.current.paused) {
+      if (!isCapacitor && audioRef.current && audioRef.current.src && audioRef.current.paused) {
         try { audioRef.current.play().catch(() => {}); } catch {}
       }
     } else {
