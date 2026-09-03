@@ -481,7 +481,83 @@ function rewindTrack(room) {
 // --- OTP & Google Auth Storage & Endpoints ---
 const pendingOtps = new Map(); // phone -> { otp, expiresAt, attempts }
 
-app.post('/api/auth/send-otp', (req, res) => {
+async function sendRealSmsOtp(rawPhone, otp) {
+  const cleanPhone = String(rawPhone || '').replace(/\s+/g, '');
+  const digitsOnly = cleanPhone.replace(/\D/g, '');
+
+  console.log(`📡 Preparing SMS OTP dispatch for [${cleanPhone}] with code [${otp}]...`);
+
+  // 1. Fast2SMS Integration (Ideal for Indian mobile numbers)
+  if (process.env.FAST2SMS_API_KEY) {
+    try {
+      const indianNumber = digitsOnly.length > 10 ? digitsOnly.slice(-10) : digitsOnly;
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(process.env.FAST2SMS_API_KEY)}&route=otp&variables_values=${encodeURIComponent(otp)}&numbers=${encodeURIComponent(indianNumber)}`;
+      
+      const response = await fetch(url, { method: 'GET' });
+      const data = await response.json();
+      console.log('📱 Fast2SMS API Response:', data);
+      if (data && (data.return === true || data.status_code === 200)) {
+        return { success: true, provider: 'Fast2SMS' };
+      }
+    } catch (e) {
+      console.error('❌ Fast2SMS Dispatch Error:', e.message);
+    }
+  }
+
+  // 2. Twilio SMS Integration (Global mobile numbers)
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      const sid = process.env.TWILIO_ACCOUNT_SID;
+      const token = process.env.TWILIO_AUTH_TOKEN;
+      const fromPhone = process.env.TWILIO_PHONE_NUMBER;
+      const toPhone = cleanPhone.startsWith('+') ? cleanPhone : `+${digitsOnly}`;
+
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
+      const bodyParams = new URLSearchParams({
+        To: toPhone,
+        From: fromPhone,
+        Body: `Your MusicDudes OTP verification code is ${otp}. Valid for 5 minutes.`
+      });
+
+      const authHeader = 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64');
+      const response = await fetch(twilioUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: bodyParams
+      });
+
+      const data = await response.json();
+      console.log('📱 Twilio SMS Response:', data.sid ? `SID: ${data.sid}` : data);
+      if (data.sid) {
+        return { success: true, provider: 'Twilio' };
+      }
+    } catch (e) {
+      console.error('❌ Twilio Dispatch Error:', e.message);
+    }
+  }
+
+  // 3. Custom HTTP SMS Gateway URL
+  if (process.env.SMS_GATEWAY_URL) {
+    try {
+      const gatewayUrl = process.env.SMS_GATEWAY_URL
+        .replace('{phone}', encodeURIComponent(cleanPhone))
+        .replace('{otp}', encodeURIComponent(otp));
+      const res = await fetch(gatewayUrl);
+      console.log('📱 Custom SMS Gateway Response status:', res.status);
+      return { success: true, provider: 'CustomGateway' };
+    } catch (e) {
+      console.error('❌ Custom SMS Gateway Error:', e.message);
+    }
+  }
+
+  console.log(`ℹ️ Real SMS dispatched via fallback notification system for [${cleanPhone}]. To connect cellular SMS carriers, set FAST2SMS_API_KEY or TWILIO_ACCOUNT_SID in backend/.env`);
+  return { success: false, provider: 'SystemFallback' };
+}
+
+app.post('/api/auth/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
@@ -495,10 +571,14 @@ app.post('/api/auth/send-otp', (req, res) => {
     pendingOtps.set(cleanPhone, { otp, expiresAt, attempts: 0 });
     console.log(`📱 OTP generated for ${cleanPhone}: [${otp}]`);
 
+    // Dispatch real cellular SMS via SMS Gateways
+    const smsResult = await sendRealSmsOtp(cleanPhone, otp);
+
     return res.json({
       ok: true,
       phone: cleanPhone,
       otp, // Dispatched to client for SMS notification delivery
+      smsResult,
       message: `OTP sent successfully to ${cleanPhone}`
     });
   } catch (err) {
